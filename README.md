@@ -1,73 +1,153 @@
-# Welcome to your Lovable project
+# Voice Gig Connect
 
-## Project info
+A voice-first gig marketplace platform designed for the Caribbean community. Post jobs or find work using voice notes—no typing required.
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+## 🌟 Features
 
-## How can I edit this code?
+- **Voice-Only Interface**: Record voice notes to post jobs or find work
+- **Caribbean ASR Analysis**: Advanced speech recognition optimized for Caribbean accents and dialects
+- **WhatsApp Integration**: Receive and process voice notes via WhatsApp
+- **Smart Job Matching**: Connects job posters with skilled workers
+- **Real-time Stats**: Track active jobs, workers, and gigs
+- **Content Moderation**: Built-in safety checks for all voice submissions
 
-There are several ways of editing your application.
+## 🚀 Getting Started
 
-**Use Lovable**
+### Prerequisites
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+- Node.js 18+ and npm (or use [nvm](https://github.com/nvm-sh/nvm#installing-and-updating))
+- Supabase account and project
+- (Optional) Twilio account for WhatsApp integration
+- (Optional) OpenAI API key for transcription
 
-Changes made via Lovable will be committed automatically to this repo.
+### Installation
 
-**Use your preferred IDE**
+1. **Clone the repository**
+   ```sh
+   git clone <YOUR_GIT_URL>
+   cd voice-gig-connect
+   ```
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+2. **Install dependencies**
+   ```sh
+   npm install
+   ```
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+3. **Set up environment variables**
+   
+   Create a `.env` file in the root directory:
+   ```env
+   VITE_SUPABASE_URL=your_supabase_url
+   VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
 
-Follow these steps:
+   For the API server (in `api/` directory), create `api/.env`:
+   ```env
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_SERVICE_KEY=your_supabase_service_key
+   TWILIO_ACCOUNT_SID=your_twilio_account_sid
+   TWILIO_AUTH_TOKEN=your_twilio_auth_token
+   OPENAI_API_KEY=your_openai_api_key
+   ```
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+4. **Set up the database**
+   
+   Run the SQL schema in your Supabase SQL Editor:
+   ```sh
+   # Use either CREATE_TABLES.sql or supabase/schema.sql
+   ```
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+5. **Start the development server**
+   ```sh
+   npm run dev
+   ```
 
-# Step 3: Install the necessary dependencies.
-npm i
+6. **Start the API server** (optional, for WhatsApp integration)
+   ```sh
+   cd api
+   npm install
+   npm start
+   ```
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
+The application will be available at `http://localhost:5173` (or the port shown in your terminal).
+
+## 📁 Project Structure
+
+```
+voice-gig-connect/
+├── api/                 # Express server for WhatsApp webhooks
+├── src/
+│   ├── components/      # React components
+│   │   ├── ui/         # shadcn-ui components
+│   │   └── ...         # Feature components
+│   ├── lib/            # Utilities and services
+│   │   ├── supabase.ts # Supabase client
+│   │   └── transcribe.ts # Voice transcription logic
+│   ├── pages/          # Page components
+│   └── hooks/          # Custom React hooks
+├── supabase/           # Database schema
+└── public/             # Static assets
 ```
 
-**Edit a file directly in GitHub**
+## 🛠️ Technologies Used
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+- **Frontend Framework**: React 18 with TypeScript
+- **Build Tool**: Vite
+- **UI Components**: shadcn-ui (Radix UI primitives)
+- **Styling**: Tailwind CSS
+- **Routing**: React Router v6
+- **State Management**: TanStack Query (React Query)
+- **Database**: Supabase (PostgreSQL)
+- **Voice Processing**: OpenAI Whisper API
+- **WhatsApp Integration**: Twilio API
+- **Form Handling**: React Hook Form with Zod validation
 
-**Use GitHub Codespaces**
+## 📱 Available Routes
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+- `/` - Homepage with voice recorder and stats
+- `/voice-demo` - Voice recording demo page
+- `/jobs` - Browse all active jobs
+- `/find-work` - Find work opportunities
+- `/hire-workers` - Browse available workers
 
-## What technologies are used for this project?
+## 🔧 Development
 
-This project is built with:
+### Build for Production
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+```sh
+npm run build
+```
 
-## How can I deploy this project?
+### Preview Production Build
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+```sh
+npm run preview
+```
 
-## Can I connect a custom domain to my Lovable project?
+### Linting
 
-Yes, you can!
+```sh
+npm run lint
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## 🌐 Deployment
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+The frontend can be deployed to any static hosting service (Vercel, Netlify, etc.). Make sure to set your environment variables in your hosting platform.
+
+For the API server, deploy to a Node.js hosting service (Railway, Render, Heroku, etc.) and configure your webhook URLs accordingly.
+
+## 📝 Database Schema
+
+The main tables are:
+- `voice_gigs` - Stores job postings and work requests
+- `gig_matches` - Tracks matches between jobs and workers
+
+See `supabase/schema.sql` or `CREATE_TABLES.sql` for the complete schema.
+
+## 🤝 Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## 📄 License
+
+This project is private and proprietary.
