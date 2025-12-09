@@ -1,101 +1,268 @@
-import { Phone, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import VoiceRecorder from "@/components/VoiceRecorder";
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { supabase } from "@/lib/supabase";
+import { transcribeAndAnalyzeCaribbean, moderateContent, checkRateLimit } from "@/lib/transcribe";
+import type { CaribbeanASRResult } from "@/lib/caribbean-asr-analysis";
 
 const HeroSection = () => {
-  const phoneNumber = "+1-876-555-LINK";
-  const displayNumber = "1-876-555-LINK";
+  const [isProcessing, setIsProcessing] = useState(false)
+  const [showSuccess, setShowSuccess] = useState(false)
+  const [lastAnalysis, setLastAnalysis] = useState<CaribbeanASRResult | null>(null)
+  const [stats, setStats] = useState({
+    totalJobs: 0,
+    totalWorkers: 0,
+    activeGigs: 0
+  })
+  
+  const whatsappNumber = "18765551465"; // Replace with your actual WhatsApp number
+  const whatsappMessage = "Hi! I'd like to post a job or find work through voice note.";
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
+
+  const caribbeanFlags = ["🇯🇲", "🇹🇹", "🇧🇧", "🇬🇾", "🇧🇸", "🇧🇿", "🇦🇬", "🇱🇨", "🇬🇩", "🇻🇨", "🇩🇲", "🇰🇳"];
+
+  // Fetch real stats from database
+  useEffect(() => {
+    async function fetchStats() {
+      try {
+        const { data, error } = await supabase
+          .from('voice_gigs')
+          .select('gig_type, status')
+        
+        if (error) throw error
+
+        const totalJobs = data.filter(g => g.gig_type === 'job_posting').length
+        const totalWorkers = data.filter(g => g.gig_type === 'work_request').length
+        const activeGigs = data.filter(g => g.status === 'active').length
+
+        setStats({ totalJobs, totalWorkers, activeGigs })
+      } catch (error) {
+        console.error('Error fetching stats:', error)
+        // Keep default stats if error
+      }
+    }
+    
+    fetchStats()
+  }, [])
+
+  const handleRecordingComplete = async (audioBlob: Blob) => {
+    setIsProcessing(true)
+    
+    try {
+      // Basic rate limiting using IP/user agent as identifier
+      const userIdentifier = navigator.userAgent + window.location.hostname
+      if (!checkRateLimit(userIdentifier, 5, 15)) {
+        throw new Error('Too many requests. Please wait 15 minutes before posting again.')
+      }
+
+      // Advanced Caribbean ASR analysis
+      const analysis = await transcribeAndAnalyzeCaribbean(audioBlob)
+      
+      // Content moderation
+      const moderation = moderateContent(analysis.transcription)
+      if (!moderation.safe) {
+        throw new Error(`Content rejected: ${moderation.reason}`)
+      }
+      
+      // Use Caribbean-aware extraction
+      const gigType = analysis.jobExtraction.jobType !== 'unclear' 
+        ? analysis.jobExtraction.jobType 
+        : 'job_posting' // fallback
+      const budget = {
+        min: analysis.jobExtraction.budget.amount,
+        max: analysis.jobExtraction.budget.amount,
+        currency: analysis.jobExtraction.budget.currency
+      }
+      const title = analysis.jobExtraction.skills.length > 0
+        ? `${analysis.jobExtraction.skills[0]} - ${analysis.accent.primary} speaker`
+        : analysis.transcription.substring(0, 50) + '...'
+
+      console.log('🎯 Caribbean ASR insights:', {
+        accent: analysis.accent.primary,
+        confidence: analysis.confidence,
+        skills: analysis.jobExtraction.skills,
+        urgency: analysis.jobExtraction.urgency,
+        formality: analysis.speechPatterns.formality
+      })
+
+      // Store analysis for display
+      setLastAnalysis(analysis)
+      
+      // Save to Supabase with Caribbean insights
+      const { data, error } = await supabase
+        .from('voice_gigs')
+        .insert({
+          transcription: analysis.transcription,
+          gig_type: gigType,
+          title,
+          description: analysis.transcription,
+          budget_min: budget.min,
+          budget_max: budget.max,
+          currency: budget.currency || analysis.jobExtraction.budget.currency,
+          status: 'active',
+          contact_method: 'whatsapp',
+          processed_at: new Date().toISOString(),
+        })
+        .select()
+        .single()
+      
+      if (error) throw error
+      
+      console.log('Job posted successfully:', data)
+      setShowSuccess(true)
+      
+      // Update stats to reflect new job
+      setStats(prev => ({
+        ...prev,
+        totalJobs: prev.totalJobs + (gigType === 'job_posting' ? 1 : 0),
+        totalWorkers: prev.totalWorkers + (gigType === 'work_request' ? 1 : 0),
+        activeGigs: prev.activeGigs + 1
+      }))
+      
+      // Reset after 5 seconds to allow users to see the analysis
+      setTimeout(() => {
+        setShowSuccess(false)
+        setLastAnalysis(null)
+      }, 5000)
+      
+    } catch (error) {
+      console.error('Error processing voice note:', error)
+      alert('Something went wrong. Please try again.')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
 
   return (
-    <section className="relative min-h-screen flex items-center pt-20 bg-gradient-hero overflow-hidden">
-      {/* Decorative Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 right-10 w-72 h-72 bg-accent/10 rounded-full blur-3xl animate-pulse-slow" />
-        <div className="absolute bottom-20 left-10 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-pulse-slow" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-highlight/5 rounded-full blur-3xl" />
-      </div>
+    <section className="relative min-h-[90vh] flex items-center pt-20 bg-white overflow-hidden">
 
       <div className="container relative z-10">
-        <div className="max-w-4xl mx-auto text-center">
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full text-primary text-sm font-medium mb-8 animate-fade-up">
-            <span className="w-2 h-2 bg-primary rounded-full animate-pulse" />
-            Voice-First Gig Platform
+        <div className="max-w-3xl mx-auto text-center">
+          {/* Caribbean Flags */}
+          <div className="flex flex-wrap justify-center gap-2 mb-8">
+            {caribbeanFlags.map((flag, index) => (
+              <span 
+                key={index} 
+                className="text-2xl inline-block animate-bounce hover:scale-125 transition-transform cursor-default"
+                style={{
+                  animationDelay: `${index * 0.1}s`,
+                  animationDuration: '2s'
+                }}
+              >
+                {flag}
+              </span>
+            ))}
           </div>
 
-          {/* Headline */}
-          <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-extrabold leading-tight mb-6 animate-fade-up" style={{ animationDelay: '0.1s' }}>
-            Call. Talk.{" "}
-            <span className="text-gradient-sunset">Get It Done.</span>
+          {/* Simple, Direct Headline */}
+          <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+            Find Work. Get Jobs Done.
           </h1>
-
-          {/* Subheadline */}
-          <p className="text-xl md:text-2xl text-muted-foreground max-w-2xl mx-auto mb-10 animate-fade-up" style={{ animationDelay: '0.2s' }}>
-            Post a job or find work with just a phone call. No app, no typing—just speak naturally and we handle the rest.
+          <p className="text-xl text-gray-600 mb-2">
+            Voice notes only. No typing.
+          </p>
+          <p className="text-lg text-teal-600 font-medium mb-8">
+            For the Caribbean, by the Caribbean
           </p>
 
-          {/* Phone Number Display */}
-          <div className="mb-8 animate-fade-up" style={{ animationDelay: '0.3s' }}>
-            <a 
-              href={`tel:${phoneNumber.replace(/[^+\d]/g, '')}`}
-              className="inline-flex items-center gap-3 px-6 py-4 bg-card rounded-2xl shadow-medium border border-border hover:border-primary transition-all hover:shadow-glow group"
+          {/* Voice Recorder */}
+          <div className="mb-12">
+            {showSuccess ? (
+              <div className="bg-green-50 border-2 border-green-200 rounded-xl p-6 max-w-2xl mx-auto">
+                <div className="text-green-600 text-4xl mb-2 text-center">✅</div>
+                <h3 className="text-lg font-bold text-green-800 mb-4 text-center">Job Posted Successfully!</h3>
+                
+                {lastAnalysis && (
+                  <div className="bg-white rounded-lg p-4 mb-4 text-left">
+                    <h4 className="font-semibold text-gray-800 mb-2">🎯 Caribbean ASR Analysis</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="font-medium text-blue-700">Accent Detected:</span>{" "}
+                        <span className="capitalize">{lastAnalysis.accent.primary}</span>
+                        <span className="text-gray-500 ml-1">({Math.round(lastAnalysis.confidence * 100)}% confident)</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-purple-700">Speech Quality:</span>{" "}
+                        <span className="capitalize">{lastAnalysis.speechPatterns.clarity}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-orange-700">Skills Detected:</span>{" "}
+                        <span>{lastAnalysis.jobExtraction.skills.slice(0,2).join(", ") || "General work"}</span>
+                      </div>
+                      <div>
+                        <span className="font-medium text-red-700">Urgency:</span>{" "}
+                        <span className="capitalize">{lastAnalysis.jobExtraction.urgency}</span>
+                      </div>
+                      {lastAnalysis.jobExtraction.location && (
+                        <div>
+                          <span className="font-medium text-green-700">Location:</span>{" "}
+                          <span>{lastAnalysis.jobExtraction.location}</span>
+                        </div>
+                      )}
+                      {lastAnalysis.caribbeanContext.localTerms.length > 0 && (
+                        <div>
+                          <span className="font-medium text-teal-700">Local Terms:</span>{" "}
+                          <span>{lastAnalysis.caribbeanContext.localTerms.slice(0,2).join(", ")}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                <p className="text-green-700 text-sm text-center">Your voice note is now live with Caribbean-powered insights!</p>
+              </div>
+            ) : (
+              <>
+                <VoiceRecorder 
+                  onRecordingComplete={handleRecordingComplete}
+                  isProcessing={isProcessing}
+                />
+                <p className="text-sm text-gray-500 mt-4 text-center">
+                  Record → Transcribe → Post automatically
+                </p>
+              </>
+            )}
+          </div>
+
+          {/* Clear Options */}
+          <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-12">
+            <Link to="/hire-workers" className="group">
+              <div className="bg-blue-50 hover:bg-blue-100 border-2 border-blue-200 hover:border-blue-300 p-6 rounded-lg transition-all">
+                <div className="text-3xl mb-2">💼</div>
+                <h3 className="font-bold text-lg mb-2 text-blue-900">Need Work Done?</h3>
+                <p className="text-blue-700 text-sm mb-3">Find skilled Caribbean workers</p>
+                <p className="text-xs text-blue-600 group-hover:underline">Browse available workers →</p>
+              </div>
+            </Link>
+            <Link to="/find-work" className="group">
+              <div className="bg-green-50 hover:bg-green-100 border-2 border-green-200 hover:border-green-300 p-6 rounded-lg transition-all">
+                <div className="text-3xl mb-2">🔍</div>
+                <h3 className="font-bold text-lg mb-2 text-green-900">Looking for Work?</h3>
+                <p className="text-green-700 text-sm mb-3">Find jobs that match your skills</p>
+                <p className="text-xs text-green-600 group-hover:underline">Browse available jobs →</p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Simple Stats & Browse Link */}
+          <div className="text-center">
+            <Link 
+              to="/jobs" 
+              className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium mb-4 transition-colors"
             >
-              <div className="w-14 h-14 rounded-xl bg-gradient-sunset flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Phone className="w-7 h-7 text-accent-foreground" />
-              </div>
-              <div className="text-left">
-                <p className="text-sm text-muted-foreground">Call now to post or find work</p>
-                <p className="text-2xl md:text-3xl font-bold text-foreground">{displayNumber}</p>
-              </div>
-            </a>
-          </div>
-
-          {/* CTA Buttons */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 animate-fade-up" style={{ animationDelay: '0.4s' }}>
-            <a href={`tel:${phoneNumber.replace(/[^+\d]/g, '')}`}>
-              <Button variant="hero" size="lg">
-                <Phone className="w-5 h-5" />
-                Post a Gig Now
-              </Button>
-            </a>
-            <a href="#gigs">
-              <Button variant="heroSecondary" size="lg">
-                Browse Available Gigs
-                <ArrowRight className="w-5 h-5" />
-              </Button>
-            </a>
-          </div>
-
-          {/* Trust Indicators */}
-          <div className="mt-16 pt-8 border-t border-border/50 animate-fade-up" style={{ animationDelay: '0.5s' }}>
-            <p className="text-sm text-muted-foreground mb-4">Trusted by Caribbean communities</p>
-            <div className="flex flex-wrap items-center justify-center gap-8 text-muted-foreground">
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-foreground">500+</span>
-                <span className="text-sm">Jobs Posted</span>
-              </div>
-              <div className="w-px h-8 bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-foreground">1,200+</span>
-                <span className="text-sm">Workers Registered</span>
-              </div>
-              <div className="w-px h-8 bg-border hidden sm:block" />
-              <div className="flex items-center gap-2">
-                <span className="text-2xl font-bold text-foreground">🇯🇲</span>
-                <span className="text-sm">Made in Jamaica</span>
-              </div>
+              Browse Active Jobs <ArrowRight className="w-4 h-4" />
+            </Link>
+            <div className="flex justify-center gap-8 text-sm text-gray-500">
+              <span>{stats.totalWorkers} Active Workers</span>
+              <span>•</span>
+              <span>{stats.totalJobs} Jobs Posted</span>
+              <span>•</span>
+              <span>{stats.activeGigs} Active Gigs</span>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Wave Decoration */}
-      <div className="absolute bottom-0 left-0 right-0">
-        <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full">
-          <path 
-            d="M0 60L60 54C120 48 240 36 360 42C480 48 600 72 720 78C840 84 960 72 1080 60C1200 48 1320 36 1380 30L1440 24V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0V60Z" 
-            fill="hsl(var(--background))"
-          />
-        </svg>
       </div>
     </section>
   );

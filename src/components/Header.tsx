@@ -1,46 +1,48 @@
-import { Phone, Menu, X } from "lucide-react";
+import { MessageCircle, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
+import { Link } from "react-router-dom";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const phoneNumber = "+1-876-555-LINK";
+  const whatsappNumber = "18765551465"; // Replace with your actual WhatsApp number
+  const whatsappMessage = "Hi! I'd like to post a job or find work through voice note.";
+  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-md border-b border-border">
       <div className="container flex items-center justify-between h-16 md:h-20">
         {/* Logo */}
-        <a href="/" className="flex items-center gap-2">
-          <div className="w-10 h-10 rounded-xl bg-gradient-ocean flex items-center justify-center">
-            <Phone className="w-5 h-5 text-primary-foreground" />
-          </div>
+        <Link to="/" className="flex items-center gap-2">
+          <img 
+            src="/logo.png" 
+            alt="LinkUpWork Caribbean" 
+            className="h-10 w-auto" 
+          />
           <span className="text-xl font-bold text-foreground">
             LinkUp<span className="text-primary">Work</span>
           </span>
-        </a>
+        </Link>
 
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-8">
-          <a href="#how-it-works" className="text-muted-foreground hover:text-foreground transition-colors">
-            How It Works
-          </a>
-          <a href="#post-job" className="text-muted-foreground hover:text-foreground transition-colors">
-            Post a Job
-          </a>
-          <a href="#find-work" className="text-muted-foreground hover:text-foreground transition-colors">
+          <Link to="/find-work" className="text-muted-foreground hover:text-foreground transition-colors">
             Find Work
-          </a>
-          <a href="#gigs" className="text-muted-foreground hover:text-foreground transition-colors">
-            Browse Gigs
-          </a>
+          </Link>
+          <Link to="/hire-workers" className="text-muted-foreground hover:text-foreground transition-colors">
+            Hire Workers
+          </Link>
+          <Link to="/jobs" className="text-muted-foreground hover:text-foreground transition-colors">
+            Browse All
+          </Link>
         </nav>
 
         {/* CTA */}
         <div className="hidden md:flex items-center gap-4">
-          <a href={`tel:${phoneNumber.replace(/[^+\d]/g, '')}`}>
+          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
             <Button variant="coral" size="default">
-              <Phone className="w-4 h-4" />
-              Call Now
+              <MessageCircle className="w-4 h-4" />
+              Send Voice Note
             </Button>
           </a>
         </div>
@@ -59,38 +61,31 @@ const Header = () => {
       {isMenuOpen && (
         <div className="md:hidden bg-background border-b border-border animate-fade-in">
           <nav className="container py-4 flex flex-col gap-4">
-            <a 
-              href="#how-it-works" 
-              className="text-muted-foreground hover:text-foreground transition-colors py-2"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              How It Works
-            </a>
-            <a 
-              href="#post-job" 
-              className="text-muted-foreground hover:text-foreground transition-colors py-2"
-              onClick={() => setIsMenuOpen(false)}
-            >
-              Post a Job
-            </a>
-            <a 
-              href="#find-work" 
+            <Link 
+              to="/find-work" 
               className="text-muted-foreground hover:text-foreground transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
               Find Work
-            </a>
-            <a 
-              href="#gigs" 
+            </Link>
+            <Link 
+              to="/hire-workers" 
               className="text-muted-foreground hover:text-foreground transition-colors py-2"
               onClick={() => setIsMenuOpen(false)}
             >
-              Browse Gigs
-            </a>
-            <a href={`tel:${phoneNumber.replace(/[^+\d]/g, '')}`} className="mt-2">
+              Hire Workers
+            </Link>
+            <Link 
+              to="/jobs" 
+              className="text-muted-foreground hover:text-foreground transition-colors py-2"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Browse All
+            </Link>
+            <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-2">
               <Button variant="coral" size="default" className="w-full">
-                <Phone className="w-4 h-4" />
-                Call Now
+                <MessageCircle className="w-4 h-4" />
+                Send Voice Note
               </Button>
             </a>
           </nav>
