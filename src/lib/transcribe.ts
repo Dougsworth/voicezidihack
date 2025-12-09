@@ -120,24 +120,9 @@ export async function transcribeAudio(audioBlob: Blob): Promise<string> {
     
     throw new Error('No transcription result received')
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('❌ Caribbean ASR transcription failed:', error)
-    
-    // Fallback to demo data for pitch purposes
-    const demoTranscriptions = [
-      "I need someone to fix my roof in Kingston. It's leaking when it rains. Budget is around 15,000 JMD.",
-      "Looking for a graphic designer to create a logo for my bakery. Can pay 8,000 JMD for good work.",
-      "I'm a plumber available for emergency calls in Spanish Town area. Call me for any pipe issues.",
-      "Need someone to help move furniture this weekend. Two bedroom apartment. Can pay 5,000 JMD.",
-      "Experienced electrician offering services across Kingston. Licensed and insured. Fair prices."
-    ]
-    
-    const randomDemo = demoTranscriptions[Math.floor(Math.random() * demoTranscriptions.length)]
-    
-    console.log('🎭 Using demo transcription due to API error:', error.message)
-    await new Promise(resolve => setTimeout(resolve, 3000)) // Simulate processing time
-    
-    return `[DEMO - API Error: ${error.message}] ${randomDemo}`
+    throw new Error(`Transcription failed: ${error.message || 'Unknown error'}`)
   }
 }
 
@@ -192,25 +177,9 @@ async function tryGradioFileUpload(audioBlob: Blob): Promise<string> {
     
     throw new Error('Gradio /transcribe API methods failed')
     
-  } catch (error) {
+  } catch (error: any) {
     console.error('All Gradio API attempts failed:', error)
-    
-    // Return a demo transcription with error notice
-    const demoTranscriptions = [
-      "I need someone to fix my roof in Kingston. It's leaking when it rains. Budget is around 15,000 JMD.",
-      "Looking for a graphic designer to create a logo for my bakery. Can pay 8,000 JMD for good work.",
-      "I'm a plumber available for emergency calls in Spanish Town area. Call me for any pipe issues.",
-      "Need someone to help move furniture this weekend. Two bedroom apartment. Can pay 5,000 JMD.",
-      "Experienced electrician offering services across Kingston. Licensed and insured. Fair prices."
-    ]
-    
-    const randomDemo = demoTranscriptions[Math.floor(Math.random() * demoTranscriptions.length)]
-    
-    // Add a delay to simulate processing
-    await new Promise(resolve => setTimeout(resolve, 2000))
-    
-    console.log('Using demo transcription due to API issues')
-    return `[DEMO] ${randomDemo}`
+    throw new Error(`Transcription failed: ${error.message || 'API connection error'}`)
   }
 }
 

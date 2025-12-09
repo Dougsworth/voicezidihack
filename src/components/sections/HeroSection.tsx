@@ -1,4 +1,4 @@
-import { ArrowRight } from "lucide-react";
+import { ArrowRight, Phone } from "lucide-react";
 import VoiceRecorder from "@/components/voice/VoiceRecorder";
 import TranscriptionLoader from "@/components/voice/TranscriptionLoader";
 import { useState, useEffect } from "react";
@@ -7,7 +7,7 @@ import { TranscriptionService } from "@/services/transcriptionService";
 import { VoiceJobsService } from "@/services/voiceJobsService";
 import { GeolocationService, type CaribbeanLocation } from "@/services/geolocationService";
 import type { AppStats } from "@/types";
-import { CARIBBEAN_FLAGS, UI_CONFIG, CARIBBEAN_COLORS } from "@/constants";
+import { CARIBBEAN_FLAGS, CARIBBEAN_COLORS } from "@/constants";
 
 const HeroSection = () => {
   const [isProcessing, setIsProcessing] = useState(false)
@@ -16,6 +16,8 @@ const HeroSection = () => {
   const [showSuccess, setShowSuccess] = useState(false)
   const [transcription, setTranscription] = useState<string | null>(null)
   const [userLocation, setUserLocation] = useState<CaribbeanLocation | null>(null)
+  const [userPhone, setUserPhone] = useState<string | null>(null)
+  const [userPhoneDisplay, setUserPhoneDisplay] = useState<string | null>(null)
   const [stats, setStats] = useState<AppStats>({
     totalJobs: 0,
     totalWorkers: 0,
@@ -59,6 +61,15 @@ const HeroSection = () => {
       }
     }
     
+    // Check for saved phone number
+    const savedPhone = localStorage.getItem('userPhone')
+    const savedPhoneDisplay = localStorage.getItem('userPhoneDisplay')
+    if (savedPhone) {
+      setUserPhone(savedPhone)
+      setUserPhoneDisplay(savedPhoneDisplay)
+      console.log('📱 Using saved phone:', savedPhone)
+    }
+    
     fetchStats()
     autoGetLocation()
   }, [])
@@ -86,9 +97,9 @@ const HeroSection = () => {
       
       const gigType = isWorkRequest ? 'work_request' : 'job_posting'
       
-      // Save to voice_jobs table
-      await VoiceJobsService.createFromFrontend(text, gigType)
-      console.log('✅ Saved to voice_jobs')
+      // Save to voice_jobs table with user's phone number
+      await VoiceJobsService.createFromFrontend(text, gigType, userPhone || undefined)
+      console.log('✅ Saved to voice_jobs with phone:', userPhone)
       
       setProcessingStage('complete')
       setShowSuccess(true)
@@ -179,6 +190,19 @@ const HeroSection = () => {
                   </div>
                 )}
                 
+                {/* Contact Info */}
+                {userPhoneDisplay && (
+                  <div className="bg-white rounded-lg p-3 text-left mb-2">
+                    <div className="flex items-center gap-2">
+                      <Phone className="w-4 h-4" style={{ color: CARIBBEAN_COLORS.secondary[500] }} />
+                      <p className="text-sm text-gray-600">
+                        <span className="font-medium" style={{ color: CARIBBEAN_COLORS.secondary[700] }}>Contact:</span>{" "}
+                        {userPhoneDisplay}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 {userLocation && (
                   <div className="bg-white rounded-lg p-3 text-left">
                     <div className="flex items-center gap-2">
@@ -191,6 +215,16 @@ const HeroSection = () => {
                       </p>
                     </div>
                   </div>
+                )}
+                
+                {!userPhone && (
+                  <Link 
+                    to="/signup" 
+                    className="block mt-3 text-sm text-center py-2 px-4 rounded-lg"
+                    style={{ backgroundColor: CARIBBEAN_COLORS.warning[50], color: CARIBBEAN_COLORS.warning[700] }}
+                  >
+                    Add your phone number so people can contact you →
+                  </Link>
                 )}
               </div>
             ) : (

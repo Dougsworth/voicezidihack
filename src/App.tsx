@@ -8,6 +8,7 @@ import VoiceDemo from "./pages/VoiceDemo";
 import Jobs from "./pages/Jobs";
 import FindWork from "./pages/FindWork";
 import HireWorkers from "./pages/HireWorkers";
+import Signup from "./pages/Signup";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -24,6 +25,7 @@ const App = () => (
           <Route path="/jobs" element={<Jobs />} />
           <Route path="/find-work" element={<FindWork />} />
           <Route path="/hire-workers" element={<HireWorkers />} />
+          <Route path="/signup" element={<Signup />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>
