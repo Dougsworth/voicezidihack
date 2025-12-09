@@ -2,12 +2,13 @@ import { useState, useEffect, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { VoiceJobsService } from '@/services'
 import type { VoiceJob } from '@/types'
-import { MessageCircle, Clock, ArrowLeft, Briefcase, Wrench, Phone, Play, Pause, CheckCircle, Loader, AlertCircle } from 'lucide-react'
+import { MessageCircle, Clock, ArrowLeft, Briefcase, Wrench, Phone, Play, Pause, CheckCircle, Loader, AlertCircle, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 
 export default function Jobs() {
   const [jobs, setJobs] = useState<VoiceJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [transcribing, setTranscribing] = useState(false)
   const [statusFilter, setStatusFilter] = useState<'all' | 'processing' | 'completed' | 'error'>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | 'job_posting' | 'work_request'>('all')
   const [playingId, setPlayingId] = useState<string | null>(null)
@@ -15,6 +16,7 @@ export default function Jobs() {
 
   useEffect(() => {
     fetchJobs()
+    processTranscriptions()
   }, [])
 
   const fetchJobs = async () => {
@@ -288,9 +290,21 @@ export default function Jobs() {
                     "{job.transcription}"
                   </p>
                 ) : (
-                  <p className="text-gray-400 text-sm mb-4 italic">
-                    {job.status === 'processing' ? 'Transcription in progress...' : 'No transcription available'}
-                  </p>
+                  <div className="mb-4">
+                    <p className="text-gray-400 text-sm italic mb-2">
+                      {job.status === 'processing' ? 'Transcription pending...' : 'No transcription available'}
+                    </p>
+                    {job.status === 'processing' && job.recording_url && (
+                      <button
+                        onClick={() => job.id && transcribeSingle(job.id)}
+                        disabled={transcribing}
+                        className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
+                      >
+                        <RefreshCw className={`w-3 h-3 ${transcribing ? 'animate-spin' : ''}`} />
+                        {transcribing ? 'Transcribing...' : 'Transcribe now'}
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Play Recording Button */}

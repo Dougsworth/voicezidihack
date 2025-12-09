@@ -5,6 +5,76 @@ import type { CaribbeanASRResult } from '../types'
 export class TranscriptionService {
   private static readonly API_BASE = 'https://dougsworth-linkup-asr.hf.space'
   
+  // Transcribe from a URL (for Twilio recordings)
+  // Note: Twilio URLs require authentication, so this only works for public URLs
+  static async transcribeFromUrl(audioUrl: string): Promise<string> {
+    try {
+      console.log('🎤 Transcribing from URL:', audioUrl)
+      
+      // Check if it's a Twilio URL (requires auth - can't access from frontend)
+      if (audioUrl.includes('api.twilio.com')) {
+        throw new Error('Twilio recordings require authentication. Transcription must be done by the Twilio webhook.')
+      }
+      
+      // Fetch the audio file from the URL
+      const response = await fetch(audioUrl)
+      if (!response.ok) {
+        throw new Error(`Failed to fetch audio: ${response.status}`)
+      }
+      
+      const audioBlob = await response.blob()
+      console.log('📥 Downloaded audio:', audioBlob.size, 'bytes')
+      
+      // Use the existing transcription method
+      return await this.transcribeAudio(audioBlob)
+      
+    } catch (error) {
+      console.error('❌ URL transcription failed:', error)
+      throw error
+    }
+  }
+
+  // Retry transcription using the Gradio event ID (for Twilio jobs)
+  static async retryTranscriptionByEventId(eventId: string): Promise<string> {
+    console.log('🔄 Retrying transcription for event:', eventId)
+    
+    const maxRetries = 15
+    const delay = 1000
+    
+    for (let i = 0; i < maxRetries; i++) {
+      console.log(`Polling attempt ${i + 1}/${maxRetries}`)
+      
+      try {
+        const response = await fetch(
+          `${this.API_BASE}/gradio_api/call/transcribe/${eventId}`
+        )
+        
+        if (!response.ok) {
+          throw new Error(`Polling failed: ${response.status}`)
+        }
+        
+        const text = await response.text()
+        const lines = text.split('\n')
+        const dataLine = lines.find(l => l.startsWith('data:'))
+        
+        if (dataLine) {
+          const transcription = JSON.parse(dataLine.replace('data: ', ''))[0]
+          console.log('✅ Transcription received:', transcription)
+          return transcription
+        }
+        
+        // Not ready yet - wait then retry
+        await new Promise(resolve => setTimeout(resolve, delay))
+        
+      } catch (error) {
+        console.log(`Attempt ${i + 1} failed:`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+      }
+    }
+    
+    throw new Error('Transcription not ready after maximum retries')
+  }
+  
   static async transcribeAudio(audioBlob: Blob): Promise<string> {
     try {
       console.log('🎤 Starting transcription with Caribbean ASR...')

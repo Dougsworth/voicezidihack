@@ -4,7 +4,7 @@ import { CARIBBEAN_COLORS } from "@/constants";
 const steps = [
   {
     icon: Phone,
-    title: "Call or Text",
+    title: "Text",
     description: "Leave a voice message or text us what work you need or what skills you offer"
   },
   {

@@ -1,17 +1,12 @@
 import { ArrowRight } from "lucide-react";
-import { Button } from "@/components/ui/button";
 import VoiceRecorder from "@/components/voice/VoiceRecorder";
-import VoiceQualityFeedback from "@/components/voice/VoiceQualityFeedback";
 import TranscriptionLoader from "@/components/voice/TranscriptionLoader";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { TranscriptionService } from "@/services/transcriptionService";
-import { ModerationService } from "@/services/moderationService";
-import { DatabaseService } from "@/services/databaseService";
 import { VoiceJobsService } from "@/services/voiceJobsService";
 import { GeolocationService, type CaribbeanLocation } from "@/services/geolocationService";
-import { OpenAIService } from "@/services/openaiService";
-import type { CaribbeanASRResult, AppStats } from "@/types";
+import type { AppStats } from "@/types";
 import { CARIBBEAN_FLAGS, UI_CONFIG, CARIBBEAN_COLORS } from "@/constants";
 
 const HeroSection = () => {
@@ -19,7 +14,7 @@ const HeroSection = () => {
   const [processingStage, setProcessingStage] = useState<'uploading' | 'transcribing' | 'analyzing' | 'complete' | 'error'>('uploading')
   const [processingError, setProcessingError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
-  const [lastAnalysis, setLastAnalysis] = useState<CaribbeanASRResult | null>(null)
+  const [transcription, setTranscription] = useState<string | null>(null)
   const [userLocation, setUserLocation] = useState<CaribbeanLocation | null>(null)
   const [stats, setStats] = useState<AppStats>({
     totalJobs: 0,
@@ -27,13 +22,16 @@ const HeroSection = () => {
     activeGigs: 0
   })
 
-
-  // Fetch real stats and auto-get location on mount
+  // Fetch stats and auto-get location on mount
   useEffect(() => {
     async function fetchStats() {
       try {
-        const statsData = await DatabaseService.getAppStats()
-        setStats(statsData)
+        const statsData = await VoiceJobsService.getStats()
+        setStats({
+          totalJobs: statsData.total,
+          totalWorkers: statsData.completed,
+          activeGigs: statsData.processing
+        })
       } catch (error) {
         console.error('Error fetching stats:', error)
       }
@@ -41,26 +39,23 @@ const HeroSection = () => {
     
     // Auto-get location once (silently)
     async function autoGetLocation() {
-      // Check if we already have location cached
       const cachedLocation = localStorage.getItem('userLocation')
       if (cachedLocation) {
         try {
           setUserLocation(JSON.parse(cachedLocation))
-          console.log('📍 Using cached location')
           return
         } catch (e) {
           localStorage.removeItem('userLocation')
         }
       }
       
-      // Try to get location automatically (silent - no prompt if denied before)
       try {
         const location = await GeolocationService.getCaribbeanLocation()
         setUserLocation(location)
         localStorage.setItem('userLocation', JSON.stringify(location))
         console.log('📍 Auto-detected location:', location.detectedIsland || location.nearestTown)
       } catch (error) {
-        console.log('📍 Location not available (user denied or unavailable)')
+        console.log('📍 Location not available')
       }
     }
     
@@ -69,108 +64,41 @@ const HeroSection = () => {
   }, [])
 
   const handleRecordingComplete = async (audioBlob: Blob) => {
-    // Process immediately with whatever location we have (or null)
-    processVoiceNote(audioBlob, userLocation)
-  }
-
-  const processVoiceNote = async (audioBlob: Blob, location: CaribbeanLocation | null) => {
     setIsProcessing(true)
     setProcessingStage('uploading')
     setProcessingError(null)
     
     try {
-      // Basic rate limiting using IP/user agent as identifier
-      const userIdentifier = navigator.userAgent + window.location.hostname
-      if (!ModerationService.checkRateLimit(userIdentifier)) {
-        throw new Error('Too many requests. Please wait 15 minutes before posting again.')
-      }
-
       setProcessingStage('transcribing')
       
-      // Advanced Caribbean ASR analysis
-      let analysis = await TranscriptionService.transcribeAndAnalyzeCaribbean(audioBlob)
+      // Transcribe using HuggingFace ASR
+      const text = await TranscriptionService.transcribeAudio(audioBlob)
+      console.log('✅ Transcription:', text)
       
-      // Enhance with geolocation if available
-      if (location) {
-        analysis = GeolocationService.enhanceASRWithLocation(analysis, location)
-        console.log('🗺️ Enhanced ASR with geolocation:', {
-          detectedIsland: location.detectedIsland,
-          nearestTown: location.nearestTown,
-          isCaribbean: location.isCaribbean,
-          accuracy: `${location.accuracy}m`
-        })
-      }
-      
+      setTranscription(text)
       setProcessingStage('analyzing')
       
-      // Content moderation
-      const moderation = ModerationService.moderateContent(analysis.transcription)
-      if (!moderation.safe) {
-        throw new Error(`Content rejected: ${moderation.reason}`)
-      }
+      // Determine job type from transcription
+      const isWorkRequest = text.toLowerCase().includes('looking for work') || 
+                           text.toLowerCase().includes('available for') ||
+                           text.toLowerCase().includes('i can') ||
+                           text.toLowerCase().includes('my skills')
       
-      // Use OpenAI to enhance the job posting (optional - falls back if fails)
-      let enhancedPosting
-      try {
-        console.log('🤖 Enhancing job posting with OpenAI...')
-        enhancedPosting = await OpenAIService.enhanceJobPosting(
-          analysis.transcription,
-          analysis.accent.primary,
-          location?.detectedIsland || 'Caribbean',
-          analysis.jobExtraction.skills
-        )
-        console.log('✨ OpenAI enhanced posting:', enhancedPosting)
-      } catch (error) {
-        console.warn('⚠️ OpenAI enhancement failed, using basic posting:', error)
-        // Fallback to basic enhanced posting from analysis
-        enhancedPosting = {
-          title: analysis.jobExtraction.skills.length > 0
-            ? `${analysis.jobExtraction.skills[0]} - ${analysis.accent.primary} speaker`
-            : analysis.transcription.substring(0, 50) + '...',
-          description: analysis.transcription,
-          requirements: analysis.jobExtraction.skills,
-          duration: 'To be discussed',
-          payment: analysis.jobExtraction.budget.amount 
-            ? `${analysis.jobExtraction.budget.amount} ${analysis.jobExtraction.budget.currency}`
-            : 'Negotiable',
-          location: location?.detectedIsland || analysis.jobExtraction.location || 'Caribbean',
-          category: analysis.jobExtraction.skills[0] || 'General Services',
-          urgency: analysis.jobExtraction.urgency,
-          jobType: analysis.jobExtraction.jobType !== 'unclear' 
-            ? analysis.jobExtraction.jobType 
-            : 'job_posting'
-        }
-      }
-
-      // Store analysis for display
-      setLastAnalysis(analysis)
+      const gigType = isWorkRequest ? 'work_request' : 'job_posting'
       
-      // Save to voice_gigs database with enhanced posting data
-      const data = await DatabaseService.createEnhancedVoiceGig(enhancedPosting, analysis, location)
-      console.log('Job posted to voice_gigs:', data)
-      
-      // Also save to voice_jobs so it shows in listing pages
-      const gigType = enhancedPosting.jobType === 'work_request' ? 'work_request' : 'job_posting'
-      await VoiceJobsService.createFromFrontend(analysis.transcription, gigType)
-      console.log('Job also posted to voice_jobs for listings')
+      // Save to voice_jobs table
+      await VoiceJobsService.createFromFrontend(text, gigType)
+      console.log('✅ Saved to voice_jobs')
       
       setProcessingStage('complete')
       setTimeout(() => {
         setShowSuccess(true)
       }, 500)
       
-      // Update stats to reflect new job
-      setStats(prev => ({
-        ...prev,
-        totalJobs: prev.totalJobs + (enhancedPosting.jobType === 'job_posting' ? 1 : 0),
-        totalWorkers: prev.totalWorkers + (enhancedPosting.jobType === 'work_request' ? 1 : 0),
-        activeGigs: prev.activeGigs + 1
-      }))
-      
-      // Reset after configured duration to allow users to see the analysis
+      // Reset after showing success
       setTimeout(() => {
         setShowSuccess(false)
-        setLastAnalysis(null)
+        setTranscription(null)
       }, UI_CONFIG.successMessageDuration)
       
     } catch (error) {
@@ -178,13 +106,11 @@ const HeroSection = () => {
       setProcessingStage('error')
       setProcessingError(error instanceof Error ? error.message : 'Something went wrong')
       
-      // Show error for 3 seconds then hide
       setTimeout(() => {
         setIsProcessing(false)
         setProcessingError(null)
       }, 3000)
     } finally {
-      // Don't immediately stop processing, let success/error states show
       setTimeout(() => {
         setIsProcessing(false)
       }, 1000)
@@ -193,7 +119,6 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-[90vh] flex items-center pt-20 bg-white overflow-hidden">
-
       <div className="container relative z-10">
         <div className="max-w-3xl mx-auto text-center">
           {/* Caribbean Flags */}
@@ -213,7 +138,7 @@ const HeroSection = () => {
             ))}
           </div>
 
-          {/* Simple, Direct Headline */}
+          {/* Headline */}
           <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 mb-4">
             Find Work. Get Jobs Done.
           </h1>
@@ -241,22 +166,19 @@ const HeroSection = () => {
                     </svg>
                   </div>
                 </div>
-                <h3 className="text-lg font-bold mb-4 text-center" style={{ color: CARIBBEAN_COLORS.success[800] }}>Job Posted Successfully!</h3>
+                <h3 className="text-lg font-bold mb-4 text-center" style={{ color: CARIBBEAN_COLORS.success[800] }}>
+                  Posted Successfully!
+                </h3>
                 
-                {lastAnalysis && (
-                  <VoiceQualityFeedback 
-                    analysis={lastAnalysis}
-                    onImprove={() => {
-                      setShowSuccess(false)
-                      setLastAnalysis(null)
-                    }}
-                  />
+                {transcription && (
+                  <div className="bg-white rounded-lg p-4 mb-4 text-left">
+                    <p className="text-sm font-medium text-gray-500 mb-1">Your transcription:</p>
+                    <p className="text-gray-700 italic">"{transcription}"</p>
+                  </div>
                 )}
                 
-                <p className="text-sm text-center" style={{ color: CARIBBEAN_COLORS.success[700] }}>Your voice note is now live with Caribbean-powered insights!</p>
-                
                 {userLocation && (
-                  <div className="bg-white rounded-lg p-3 mt-3 text-left">
+                  <div className="bg-white rounded-lg p-3 text-left">
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 rounded-full flex items-center justify-center" style={{ backgroundColor: CARIBBEAN_COLORS.primary[500] }}>
                         <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
@@ -264,11 +186,6 @@ const HeroSection = () => {
                       <p className="text-sm text-gray-600">
                         <span className="font-medium" style={{ color: CARIBBEAN_COLORS.primary[700] }}>Posted from:</span>{" "}
                         {GeolocationService.formatLocation(userLocation)}
-                        {userLocation.accuracy && (
-                          <span className="text-gray-500 ml-1">
-                            (±{Math.round(userLocation.accuracy)}m accuracy)
-                          </span>
-                        )}
                       </p>
                     </div>
                   </div>
@@ -287,7 +204,7 @@ const HeroSection = () => {
             )}
           </div>
 
-          {/* Clear Options */}
+          {/* Options */}
           <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-12">
             <Link to="/hire-workers" className="group">
               <div className="bg-white p-8 rounded-lg transition-all shadow-sm hover:shadow-md border" style={{ 
@@ -307,8 +224,8 @@ const HeroSection = () => {
                   </div>
                   <h3 className="font-bold text-lg" style={{ color: CARIBBEAN_COLORS.primary[800] }}>Need Work Done?</h3>
                 </div>
-                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.primary[600] }}>Connect with skilled Caribbean professionals for your projects</p>
-                <p className="text-sm font-medium transition-colors" style={{ color: CARIBBEAN_COLORS.primary[500] }}>Browse available workers →</p>
+                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.primary[600] }}>Connect with skilled Caribbean professionals</p>
+                <p className="text-sm font-medium" style={{ color: CARIBBEAN_COLORS.primary[500] }}>Browse workers →</p>
               </div>
             </Link>
             <Link to="/find-work" className="group">
@@ -329,13 +246,13 @@ const HeroSection = () => {
                   </div>
                   <h3 className="font-bold text-lg" style={{ color: CARIBBEAN_COLORS.secondary[800] }}>Looking for Work?</h3>
                 </div>
-                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.secondary[600] }}>Find opportunities that match your skills and location</p>
-                <p className="text-sm font-medium transition-colors" style={{ color: CARIBBEAN_COLORS.secondary[500] }}>Browse available jobs →</p>
+                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.secondary[600] }}>Find opportunities that match your skills</p>
+                <p className="text-sm font-medium" style={{ color: CARIBBEAN_COLORS.secondary[500] }}>Browse jobs →</p>
               </div>
             </Link>
           </div>
 
-          {/* Simple Stats & Browse Link */}
+          {/* Stats */}
           <div className="text-center">
             <Link 
               to="/jobs" 
@@ -344,19 +261,18 @@ const HeroSection = () => {
               onMouseEnter={(e) => e.currentTarget.style.color = CARIBBEAN_COLORS.secondary[700]}
               onMouseLeave={(e) => e.currentTarget.style.color = CARIBBEAN_COLORS.secondary[600]}
             >
-              Browse Active Jobs <ArrowRight className="w-4 h-4" />
+              Browse All Jobs <ArrowRight className="w-4 h-4" />
             </Link>
             <div className="flex justify-center gap-8 text-sm" style={{ color: CARIBBEAN_COLORS.neutral[500] }}>
-              <span>{stats.totalWorkers} Active Workers</span>
+              <span>{stats.totalJobs} Total Posts</span>
               <span>•</span>
-              <span>{stats.totalJobs} Jobs Posted</span>
+              <span>{stats.totalWorkers} Completed</span>
               <span>•</span>
-              <span>{stats.activeGigs} Active Gigs</span>
+              <span>{stats.activeGigs} Processing</span>
             </div>
           </div>
         </div>
       </div>
-
     </section>
   );
 };

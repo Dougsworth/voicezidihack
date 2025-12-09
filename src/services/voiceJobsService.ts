@@ -1,6 +1,7 @@
 // Voice Jobs Service - for Twilio voice_jobs table
 import { supabase } from '../lib/supabase'
 import type { VoiceJob } from '../types'
+import { TranscriptionService } from './transcriptionService'
 
 export class VoiceJobsService {
   static async getVoiceJobs(filters?: { gigType?: 'job_posting' | 'work_request' }): Promise<VoiceJob[]> {
@@ -97,8 +98,7 @@ export class VoiceJobsService {
       .from('voice_jobs')
       .update({ 
         transcription,
-        status,
-        processed_at: new Date().toISOString()
+        status
       })
       .eq('id', id)
       .select()
@@ -243,5 +243,115 @@ export class VoiceJobsService {
     }
     
     return result
+  }
+
+  // Process all pending voice jobs (transcribe recordings)
+  static async processPendingTranscriptions(): Promise<{
+    processed: number
+    failed: number
+    results: Array<{ id: string; status: 'success' | 'error'; transcription?: string; error?: string }>
+  }> {
+    console.log('🔄 Processing pending transcriptions...')
+    
+    // Get all jobs with status 'processing'
+    const pendingJobs = await this.getVoiceJobsByStatus('processing')
+    console.log(`📋 Found ${pendingJobs.length} pending jobs`)
+    
+    const results: Array<{ id: string; status: 'success' | 'error'; transcription?: string; error?: string }> = []
+    let processed = 0
+    let failed = 0
+    
+    for (const job of pendingJobs) {
+      if (!job.id) {
+        console.log(`⏭️ Skipping job - no ID`)
+        continue
+      }
+      
+      try {
+        console.log(`🎤 Transcribing job ${job.id}...`)
+        
+        let transcription: string
+        
+        // If we have a Gradio event ID, try to get the result from that
+        if (job.gradio_event_id && !job.gradio_event_id.startsWith('web_')) {
+          console.log('📡 Using Gradio event ID to poll for transcription...')
+          transcription = await TranscriptionService.retryTranscriptionByEventId(job.gradio_event_id)
+        } else if (job.recording_url && !job.recording_url.includes('api.twilio.com')) {
+          // For non-Twilio URLs, we can fetch directly
+          transcription = await TranscriptionService.transcribeFromUrl(job.recording_url)
+        } else {
+          console.log(`⏭️ Skipping job ${job.id} - Twilio URL requires backend transcription`)
+          continue
+        }
+        
+        // Update the database
+        const updated = await this.updateVoiceJobTranscription(job.id, transcription, 'completed')
+        
+        if (updated) {
+          console.log(`✅ Job ${job.id} transcribed:`, transcription.substring(0, 50) + '...')
+          results.push({ id: job.id, status: 'success', transcription })
+          processed++
+        } else {
+          throw new Error('Failed to update database')
+        }
+        
+      } catch (error) {
+        console.error(`❌ Failed to transcribe job ${job.id}:`, error)
+        
+        // Don't mark as error if it's just a Twilio URL issue - leave as processing
+        const errorMsg = error instanceof Error ? error.message : 'Unknown error'
+        if (!errorMsg.includes('Twilio')) {
+          await supabase
+            .from('voice_jobs')
+            .update({ status: 'error' })
+            .eq('id', job.id)
+        }
+        
+        results.push({ 
+          id: job.id, 
+          status: 'error', 
+          error: errorMsg 
+        })
+        failed++
+      }
+    }
+    
+    console.log(`✅ Processed: ${processed}, Failed: ${failed}`)
+    return { processed, failed, results }
+  }
+
+  // Transcribe a single voice job by ID
+  static async transcribeVoiceJob(jobId: string): Promise<VoiceJob | null> {
+    console.log(`🎤 Transcribing single job: ${jobId}`)
+    
+    const job = await this.getVoiceJobById(jobId)
+    if (!job) {
+      console.error('Job not found')
+      return null
+    }
+    
+    try {
+      let transcription: string
+      
+      // If we have a Gradio event ID, try to get the result from that
+      if (job.gradio_event_id && !job.gradio_event_id.startsWith('web_')) {
+        console.log('📡 Using Gradio event ID to get transcription...')
+        transcription = await TranscriptionService.retryTranscriptionByEventId(job.gradio_event_id)
+      } else if (job.recording_url && !job.recording_url.includes('api.twilio.com')) {
+        // For non-Twilio URLs, we can fetch directly
+        transcription = await TranscriptionService.transcribeFromUrl(job.recording_url)
+      } else {
+        throw new Error('Cannot transcribe: Twilio recordings require the backend webhook to handle transcription. Please wake up the HuggingFace Space at https://huggingface.co/spaces/dougsworth/linkup-asr and try calling again.')
+      }
+      
+      return await this.updateVoiceJobTranscription(jobId, transcription, 'completed')
+    } catch (error) {
+      console.error('Transcription failed:', error)
+      await supabase
+        .from('voice_jobs')
+        .update({ status: 'error' })
+        .eq('id', jobId)
+      return null
+    }
   }
 }

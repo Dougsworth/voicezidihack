@@ -2,17 +2,20 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { VoiceJobsService } from '@/services'
 import type { VoiceJob } from '@/types'
-import { MessageCircle, MapPin, Clock, Briefcase, ArrowLeft, Shield, Phone, Play, Pause } from 'lucide-react'
+import { MessageCircle, Clock, Briefcase, ArrowLeft, Shield, Phone, Play, Pause, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 
 export default function FindWork() {
   const [jobs, setJobs] = useState<VoiceJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [transcribing, setTranscribing] = useState(false)
   const [playingId, setPlayingId] = useState<string | null>(null)
   const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     fetchJobs()
+    // Auto-transcribe pending jobs in background
+    processTranscriptions()
   }, [])
 
   const fetchJobs = async () => {
@@ -25,6 +28,35 @@ export default function FindWork() {
       console.error('Error fetching jobs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const processTranscriptions = async () => {
+    try {
+      setTranscribing(true)
+      const result = await VoiceJobsService.processPendingTranscriptions()
+      console.log('🎤 Transcription results:', result)
+      
+      // Refresh the list if any were processed
+      if (result.processed > 0) {
+        await fetchJobs()
+      }
+    } catch (error) {
+      console.error('Error processing transcriptions:', error)
+    } finally {
+      setTranscribing(false)
+    }
+  }
+
+  const transcribeSingle = async (jobId: string) => {
+    try {
+      setTranscribing(true)
+      await VoiceJobsService.transcribeVoiceJob(jobId)
+      await fetchJobs()
+    } catch (error) {
+      console.error('Error transcribing:', error)
+    } finally {
+      setTranscribing(false)
     }
   }
 
@@ -155,9 +187,19 @@ export default function FindWork() {
                     "{job.transcription}"
                   </p>
                 ) : (
-                  <p className="text-gray-400 text-sm mb-4 italic">
-                    Transcription pending...
-                  </p>
+                  <div className="mb-4">
+                    <p className="text-gray-400 text-sm italic mb-2">
+                      Transcription pending...
+                    </p>
+                    <button
+                      onClick={() => job.id && transcribeSingle(job.id)}
+                      disabled={transcribing}
+                      className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${transcribing ? 'animate-spin' : ''}`} />
+                      {transcribing ? 'Transcribing...' : 'Transcribe now'}
+                    </button>
+                  </div>
                 )}
 
                 {/* Play Recording Button */}
