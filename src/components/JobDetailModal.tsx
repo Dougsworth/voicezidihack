@@ -1,6 +1,5 @@
-import { X, Phone, MessageCircle, Clock, MapPin, Briefcase, Wrench, User } from 'lucide-react'
+import { X, MessageCircle, Clock, Briefcase, Wrench, User } from 'lucide-react'
 import type { VoiceJob } from '@/types'
-import { HOTLINE } from '@/constants'
 
 interface JobDetailModalProps {
   job: VoiceJob | null
@@ -126,14 +125,6 @@ export default function JobDetailModal({ job, onClose }: JobDetailModalProps) {
                 Contact via WhatsApp
               </a>
             )}
-            
-            <a 
-              href={HOTLINE.tel}
-              className="flex items-center justify-center gap-2 w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 px-4 rounded-xl font-medium transition-colors"
-            >
-              <Phone className="w-5 h-5" />
-              Call Hotline: {HOTLINE.display}
-            </a>
           </div>
 
           {/* Tips */}
