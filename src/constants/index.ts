@@ -1,9 +1,17 @@
 // App-wide constants
 
+// Twilio Hotline Number
+export const HOTLINE = {
+  number: "+12604753441",
+  display: "1-260-475-3441",
+  tel: "tel:+12604753441",
+  whatsapp: "https://wa.me/12604753441"
+}
+
 // WhatsApp Configuration
 export const WHATSAPP_CONFIG = {
-  number: "18765551465",
-  defaultMessage: "Hi! I'd like to post a job or find work through voice note.",
+  number: "12604753441",
+  defaultMessage: "Hi! I'd like to post a job or find work by calling in.",
   getLink: (message?: string) => 
     `https://wa.me/${WHATSAPP_CONFIG.number}?text=${encodeURIComponent(message || WHATSAPP_CONFIG.defaultMessage)}`
 }

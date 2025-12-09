@@ -1,8 +1,7 @@
 import { Phone, Mail, Instagram, Facebook, MessageCircle } from "lucide-react";
+import { HOTLINE } from "@/constants";
 
 const Footer = () => {
-  const phoneNumber = "+1-876-555-LINK";
-  const displayNumber = "1-876-555-LINK";
 
   return (
     <footer className="bg-foreground text-background py-16">
@@ -24,11 +23,11 @@ const Footer = () => {
             
             {/* Phone CTA */}
             <a 
-              href={`tel:${phoneNumber.replace(/[^+\d]/g, '')}`}
+              href={HOTLINE.tel}
               className="inline-flex items-center gap-3 px-5 py-3 bg-background/10 rounded-xl hover:bg-background/20 transition-colors"
             >
               <Phone className="w-5 h-5 text-accent" />
-              <span className="font-bold text-lg">{displayNumber}</span>
+              <span className="font-bold text-lg">{HOTLINE.display}</span>
             </a>
           </div>
 
@@ -74,7 +73,7 @@ const Footer = () => {
               </li>
               <li>
                 <a 
-                  href="https://wa.me/18765551234" 
+                  href={HOTLINE.whatsapp}
                   className="flex items-center gap-2 text-background/70 hover:text-background transition-colors"
                 >
                   <MessageCircle className="w-4 h-4" />

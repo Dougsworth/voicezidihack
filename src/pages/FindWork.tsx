@@ -2,25 +2,23 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { VoiceJobsService } from '@/services'
 import type { VoiceJob } from '@/types'
-import { MessageCircle, Clock, Briefcase, ArrowLeft, Shield, Phone, Play, Pause, RefreshCw } from 'lucide-react'
+import { Clock, Briefcase, ArrowLeft, Shield, Phone, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
+import JobDetailModal from '@/components/JobDetailModal'
 
 export default function FindWork() {
   const [jobs, setJobs] = useState<VoiceJob[]>([])
   const [loading, setLoading] = useState(true)
   const [transcribing, setTranscribing] = useState(false)
-  const [playingId, setPlayingId] = useState<string | null>(null)
-  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
+  const [selectedJob, setSelectedJob] = useState<VoiceJob | null>(null)
 
   useEffect(() => {
     fetchJobs()
-    // Auto-transcribe pending jobs in background
     processTranscriptions()
   }, [])
 
   const fetchJobs = async () => {
     try {
-      // Fetch job postings from voice_jobs table (people looking for workers)
       const data = await VoiceJobsService.getVoiceJobs({ gigType: 'job_posting' })
       console.log('📋 Fetched job postings:', data.length)
       setJobs(data)
@@ -35,9 +33,6 @@ export default function FindWork() {
     try {
       setTranscribing(true)
       const result = await VoiceJobsService.processPendingTranscriptions()
-      console.log('🎤 Transcription results:', result)
-      
-      // Refresh the list if any were processed
       if (result.processed > 0) {
         await fetchJobs()
       }
@@ -48,7 +43,8 @@ export default function FindWork() {
     }
   }
 
-  const transcribeSingle = async (jobId: string) => {
+  const transcribeSingle = async (e: React.MouseEvent, jobId: string) => {
+    e.stopPropagation() // Prevent opening modal
     try {
       setTranscribing(true)
       await VoiceJobsService.transcribeVoiceJob(jobId)
@@ -61,7 +57,7 @@ export default function FindWork() {
   }
 
   const formatTimeAgo = (dateString?: string) => {
-    if (!dateString) return 'Unknown time'
+    if (!dateString) return 'Unknown'
     const date = new Date(dateString)
     const now = new Date()
     const diff = now.getTime() - date.getTime()
@@ -74,43 +70,13 @@ export default function FindWork() {
   }
 
   const formatPhoneNumber = (phone: string) => {
+    if (phone === 'web_user') return 'Web User'
     const cleaned = phone.replace(/\D/g, '')
-    if (cleaned.startsWith('1')) {
+    if (cleaned.startsWith('1') && cleaned.length === 11) {
       const number = cleaned.substring(1)
       return `+1 (${number.substring(0,3)}) ${number.substring(3,6)}-${number.substring(6)}`
     }
     return phone
-  }
-
-  const playRecording = (job: VoiceJob) => {
-    if (playingId === job.id) {
-      // Stop playing
-      audioRef?.pause()
-      setPlayingId(null)
-      setAudioRef(null)
-    } else {
-      // Stop any current audio
-      audioRef?.pause()
-      
-      // Play new audio
-      const audio = new Audio(job.recording_url)
-      audio.play()
-      audio.onended = () => {
-        setPlayingId(null)
-        setAudioRef(null)
-      }
-      setAudioRef(audio)
-      setPlayingId(job.id || null)
-    }
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed': return 'bg-green-100 text-green-700'
-      case 'processing': return 'bg-yellow-100 text-yellow-700'
-      case 'error': return 'bg-red-100 text-red-700'
-      default: return 'bg-gray-100 text-gray-700'
-    }
   }
 
   if (loading) {
@@ -144,92 +110,58 @@ export default function FindWork() {
             </Link>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">🔍 Find Work</h1>
             <p className="text-gray-600">Job postings from people who need work done</p>
-            <div className="flex items-center justify-center gap-2 mt-3">
-              <Shield className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-green-600">All posts verified via Twilio voice calls</span>
-            </div>
+            <p className="text-sm text-gray-500 mt-2">Click any card for details</p>
           </div>
 
           {/* Jobs Grid */}
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
             {jobs.map((job) => (
-              <div key={job.id} className="bg-white rounded-lg border border-gray-200 p-6 hover:shadow-md transition-shadow">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="p-2 rounded-lg bg-blue-100 text-blue-600">
-                    <Briefcase className="w-5 h-5" />
+              <div 
+                key={job.id} 
+                onClick={() => setSelectedJob(job)}
+                className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md hover:border-teal-300 transition-all cursor-pointer"
+              >
+                {/* Header Row */}
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <Briefcase className="w-4 h-4 text-blue-600" />
+                    <span className="text-xs text-gray-500">{formatTimeAgo(job.created_at)}</span>
                   </div>
-                  <span className="text-sm text-gray-500 flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {formatTimeAgo(job.created_at)}
-                  </span>
-                </div>
-
-                {/* Caller Info */}
-                <div className="flex items-center gap-2 mb-3">
-                  <Phone className="w-4 h-4 text-gray-400" />
-                  <span className="text-sm font-medium text-gray-700">
-                    {formatPhoneNumber(job.caller_phone)}
-                  </span>
-                </div>
-
-                {/* Status */}
-                <div className="mb-4">
-                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
-                    {job.status === 'completed' ? '✓ Transcribed' : 
-                     job.status === 'processing' ? '⏳ Processing' : '⚠ Error'}
+                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
+                    job.status === 'completed' ? 'bg-green-100 text-green-700' : 
+                    job.status === 'processing' ? 'bg-yellow-100 text-yellow-700' : 'bg-gray-100 text-gray-700'
+                  }`}>
+                    {job.status === 'completed' ? '✓' : '⏳'}
                   </span>
                 </div>
 
                 {/* Transcription */}
                 {job.transcription ? (
-                  <p className="text-gray-600 text-sm mb-4 line-clamp-3 italic">
+                  <p className="text-gray-700 text-sm mb-3 line-clamp-3">
                     "{job.transcription}"
                   </p>
                 ) : (
-                  <div className="mb-4">
-                    <p className="text-gray-400 text-sm italic mb-2">
-                      Transcription pending...
-                    </p>
+                  <div className="mb-3">
+                    <p className="text-gray-400 text-sm italic mb-1">Transcription pending...</p>
                     <button
-                      onClick={() => job.id && transcribeSingle(job.id)}
+                      onClick={(e) => job.id && transcribeSingle(e, job.id)}
                       disabled={transcribing}
                       className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
                     >
                       <RefreshCw className={`w-3 h-3 ${transcribing ? 'animate-spin' : ''}`} />
-                      {transcribing ? 'Transcribing...' : 'Transcribe now'}
+                      {transcribing ? 'Transcribing...' : 'Transcribe'}
                     </button>
                   </div>
                 )}
 
-                {/* Play Recording Button */}
-                <button 
-                  onClick={() => playRecording(job)}
-                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 mb-3"
-                >
-                  {playingId === job.id ? (
-                    <>
-                      <Pause className="w-4 h-4" />
-                      Stop Recording
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4" />
-                      Play Recording
-                    </>
-                  )}
-                </button>
-
-                {/* Contact Button */}
-                <a 
-                  href={`https://wa.me/${job.caller_phone.replace(/\D/g, '')}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
-                >
-                  <MessageCircle className="w-4 h-4" />
-                  Contact via WhatsApp
-                </a>
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
+                  <div className="flex items-center gap-1 text-xs text-gray-500">
+                    <Phone className="w-3 h-3" />
+                    <span>{formatPhoneNumber(job.caller_phone)}</span>
+                  </div>
+                  <span className="text-xs text-teal-600 font-medium">View details →</span>
+                </div>
               </div>
             ))}
           </div>
@@ -237,35 +169,26 @@ export default function FindWork() {
           {/* Empty State */}
           {jobs.length === 0 && (
             <div className="text-center py-12">
-              <div className="text-gray-400 mb-4">
-                <Briefcase className="w-16 h-16 mx-auto" />
-              </div>
-              <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                No voice recordings yet
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Call the hotline to post a job via voice!
-              </p>
+              <Briefcase className="w-12 h-12 mx-auto text-gray-300 mb-3" />
+              <h3 className="text-lg font-medium text-gray-600 mb-1">No jobs yet</h3>
+              <p className="text-gray-500 text-sm">Post a voice note to get started</p>
             </div>
           )}
 
           {/* Safety Notice */}
-          <div className="mt-12 bg-blue-50 border border-blue-200 rounded-lg p-6 max-w-2xl mx-auto">
-            <div className="flex items-start gap-3">
-              <Shield className="w-5 h-5 text-blue-600 mt-0.5" />
-              <div>
-                <h3 className="font-medium text-blue-900 mb-2">Safety First</h3>
-                <ul className="text-sm text-blue-800 space-y-1">
-                  <li>• Always meet clients in public places</li>
-                  <li>• Get payment details upfront</li>
-                  <li>• Listen to full voice recordings before committing</li>
-                  <li>• Trust your instincts</li>
-                </ul>
+          <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-4 max-w-xl mx-auto">
+            <div className="flex items-start gap-2">
+              <Shield className="w-4 h-4 text-blue-600 mt-0.5" />
+              <div className="text-sm text-blue-800">
+                <span className="font-medium">Safety:</span> Meet in public, get payment details upfront, trust your instincts.
               </div>
             </div>
           </div>
         </div>
       </div>
+
+      {/* Detail Modal */}
+      <JobDetailModal job={selectedJob} onClose={() => setSelectedJob(null)} />
     </div>
   )
 }

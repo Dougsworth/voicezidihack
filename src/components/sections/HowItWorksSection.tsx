@@ -1,11 +1,11 @@
 import { Phone, MessageSquare, Users, CheckCircle } from "lucide-react";
-import { CARIBBEAN_COLORS } from "@/constants";
+import { CARIBBEAN_COLORS, HOTLINE } from "@/constants";
 
 const steps = [
   {
     icon: Phone,
-    title: "Text",
-    description: "Leave a voice message or text us what work you need or what skills you offer"
+    title: "Call",
+    description: "Leave a voice message describing what work you need or what skills you offer"
   },
   {
     icon: MessageSquare,
@@ -79,17 +79,22 @@ const HowItWorksSection = () => {
             })}
           </div>
 
-          {/* Connection Lines for Desktop */}
-          <div className="hidden lg:block relative -mt-32 mb-16">
-            <div className="absolute top-16 left-1/4 right-1/4 flex justify-between">
-              {[0, 1, 2].map((index) => (
-                <div
-                  key={index}
-                  className="w-24 h-0.5 -mt-0.5"
-                  style={{ backgroundColor: `${CARIBBEAN_COLORS.secondary[500]}30` }}
-                />
-              ))}
-            </div>
+          {/* Call to Action */}
+          <div className="mt-12 text-center">
+            <p className="text-lg mb-4" style={{ color: CARIBBEAN_COLORS.neutral[600] }}>
+              Ready to get started? Call our hotline:
+            </p>
+            <a 
+              href={HOTLINE.tel}
+              className="inline-flex items-center gap-3 px-6 py-3 rounded-xl font-bold text-lg text-white transition-all hover:scale-105"
+              style={{ backgroundColor: CARIBBEAN_COLORS.secondary[500] }}
+            >
+              <Phone className="w-5 h-5" />
+              {HOTLINE.display}
+            </a>
+            <p className="text-sm mt-3" style={{ color: CARIBBEAN_COLORS.neutral[500] }}>
+              Available 24/7 • Leave a voice message anytime
+            </p>
           </div>
         </div>
       </div>

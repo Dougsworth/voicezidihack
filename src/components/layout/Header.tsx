@@ -1,14 +1,11 @@
-import { MessageCircle, Menu, X } from "lucide-react";
+import { Phone, Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { CARIBBEAN_COLORS } from "@/constants";
+import { CARIBBEAN_COLORS, HOTLINE } from "@/constants";
 
 const Header = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const whatsappNumber = "18765551465"; // Replace with your actual WhatsApp number
-  const whatsappMessage = "Hi! I'd like to post a job or find work through voice note.";
-  const whatsappLink = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(whatsappMessage)}`;
 
   return (
     <header className="fixed top-0 left-0 right-0 z-50 backdrop-blur-md border-b" style={{
@@ -38,16 +35,16 @@ const Header = () => {
           </Link>
         </nav>
 
-        {/* CTA */}
+        {/* CTA - Call Hotline */}
         <div className="hidden md:flex items-center gap-4">
-          <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
+          <a href={HOTLINE.tel}>
             <Button size="default" style={{ 
               backgroundColor: CARIBBEAN_COLORS.accent[500], 
               color: CARIBBEAN_COLORS.neutral[0],
               border: 'none'
             }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.accent[600]} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.accent[500]}>
-              <MessageCircle className="w-4 h-4" />
-              Send Voice Note
+              <Phone className="w-4 h-4" />
+              Call Now
             </Button>
           </a>
         </div>
@@ -90,14 +87,14 @@ const Header = () => {
             >
               Hire Workers
             </Link>
-            <a href={whatsappLink} target="_blank" rel="noopener noreferrer" className="mt-2">
+            <a href={HOTLINE.tel} className="mt-2">
               <Button size="default" className="w-full" style={{ 
                 backgroundColor: CARIBBEAN_COLORS.accent[500], 
                 color: CARIBBEAN_COLORS.neutral[0],
                 border: 'none'
               }} onMouseEnter={(e) => e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.accent[600]} onMouseLeave={(e) => e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.accent[500]}>
-                <MessageCircle className="w-4 h-4" />
-                Send Voice Note
+                <Phone className="w-4 h-4" />
+                Call Now
               </Button>
             </a>
           </nav>
