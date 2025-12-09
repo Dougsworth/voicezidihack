@@ -139,7 +139,7 @@ const WhyVoiceSection = () => {
                   </div>
                   <div>
                     <div className="font-medium" style={{ color: CARIBBEAN_COLORS.neutral[900] }}>Accent Detection</div>
-                    <div className="text-sm" style={{ color: CARIBBEAN_COLORS.neutral[600] }}>Caribbean • 96% confidence</div>
+                    <div className="text-sm" style={{ color: CARIBBEAN_COLORS.neutral[600] }}>Jamaican • 96% confidence</div>
                   </div>
                 </div>
                 
