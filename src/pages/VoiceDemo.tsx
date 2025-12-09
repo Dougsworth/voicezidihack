@@ -1,7 +1,6 @@
 import { useState } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
-import Header from '@/components/Header'
-import VoiceRecorder from '@/components/VoiceRecorder'
+import { Header, VoiceRecorder } from '@/components'
 import { supabase } from '@/lib/supabase'
 import { transcribeAudio, parseGigType, extractBudget, generateTitle } from '@/lib/transcribe'
 import { CheckCircle, ExternalLink } from 'lucide-react'

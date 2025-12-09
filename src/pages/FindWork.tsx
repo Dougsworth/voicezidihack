@@ -1,12 +1,15 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { supabase, type VoiceGig } from '@/lib/supabase'
-import { MessageCircle, MapPin, DollarSign, Clock, Briefcase, ArrowLeft, Shield } from 'lucide-react'
-import Header from '@/components/Header'
+import { VoiceJobsService } from '@/services'
+import type { VoiceJob } from '@/types'
+import { MessageCircle, MapPin, Clock, Briefcase, ArrowLeft, Shield, Phone, Play, Pause } from 'lucide-react'
+import { Header } from '@/components'
 
 export default function FindWork() {
-  const [jobs, setJobs] = useState<VoiceGig[]>([])
+  const [jobs, setJobs] = useState<VoiceJob[]>([])
   const [loading, setLoading] = useState(true)
+  const [playingId, setPlayingId] = useState<string | null>(null)
+  const [audioRef, setAudioRef] = useState<HTMLAudioElement | null>(null)
 
   useEffect(() => {
     fetchJobs()
@@ -14,16 +17,10 @@ export default function FindWork() {
 
   const fetchJobs = async () => {
     try {
-      // Only show job postings (people looking for workers)
-      const { data, error } = await supabase
-        .from('voice_gigs')
-        .select('*')
-        .eq('status', 'active')
-        .eq('gig_type', 'job_posting')
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-      setJobs(data || [])
+      // Fetch job postings from voice_jobs table (people looking for workers)
+      const data = await VoiceJobsService.getVoiceJobs({ gigType: 'job_posting' })
+      console.log('📋 Fetched job postings:', data.length)
+      setJobs(data)
     } catch (error) {
       console.error('Error fetching jobs:', error)
     } finally {
@@ -31,7 +28,8 @@ export default function FindWork() {
     }
   }
 
-  const formatTimeAgo = (dateString: string) => {
+  const formatTimeAgo = (dateString?: string) => {
+    if (!dateString) return 'Unknown time'
     const date = new Date(dateString)
     const now = new Date()
     const diff = now.getTime() - date.getTime()
@@ -43,13 +41,44 @@ export default function FindWork() {
     return 'Just now'
   }
 
-  const formatBudget = (min: number | null, max: number | null, currency: string) => {
-    if (!min && !max) return 'Budget negotiable'
-    if (min === max) return `$${min?.toLocaleString()} ${currency}`
-    if (min && max) return `$${min.toLocaleString()} - $${max.toLocaleString()} ${currency}`
-    if (min) return `From $${min.toLocaleString()} ${currency}`
-    if (max) return `Up to $${max.toLocaleString()} ${currency}`
-    return 'Budget negotiable'
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '')
+    if (cleaned.startsWith('1')) {
+      const number = cleaned.substring(1)
+      return `+1 (${number.substring(0,3)}) ${number.substring(3,6)}-${number.substring(6)}`
+    }
+    return phone
+  }
+
+  const playRecording = (job: VoiceJob) => {
+    if (playingId === job.id) {
+      // Stop playing
+      audioRef?.pause()
+      setPlayingId(null)
+      setAudioRef(null)
+    } else {
+      // Stop any current audio
+      audioRef?.pause()
+      
+      // Play new audio
+      const audio = new Audio(job.recording_url)
+      audio.play()
+      audio.onended = () => {
+        setPlayingId(null)
+        setAudioRef(null)
+      }
+      setAudioRef(audio)
+      setPlayingId(job.id || null)
+    }
+  }
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'completed': return 'bg-green-100 text-green-700'
+      case 'processing': return 'bg-yellow-100 text-yellow-700'
+      case 'error': return 'bg-red-100 text-red-700'
+      default: return 'bg-gray-100 text-gray-700'
+    }
   }
 
   if (loading) {
@@ -82,10 +111,10 @@ export default function FindWork() {
               <ArrowLeft className="w-4 h-4" /> Back to Home
             </Link>
             <h1 className="text-3xl font-bold text-gray-900 mb-2">🔍 Find Work</h1>
-            <p className="text-gray-600">Available jobs from people who need work done</p>
+            <p className="text-gray-600">Job postings from people who need work done</p>
             <div className="flex items-center justify-center gap-2 mt-3">
               <Shield className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-green-600">All posts are moderated</span>
+              <span className="text-sm text-green-600">All posts verified via Twilio voice calls</span>
             </div>
           </div>
 
@@ -104,39 +133,61 @@ export default function FindWork() {
                   </span>
                 </div>
 
-                {/* Title */}
-                <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-2">
-                  {job.title}
-                </h3>
+                {/* Caller Info */}
+                <div className="flex items-center gap-2 mb-3">
+                  <Phone className="w-4 h-4 text-gray-400" />
+                  <span className="text-sm font-medium text-gray-700">
+                    {formatPhoneNumber(job.caller_phone)}
+                  </span>
+                </div>
+
+                {/* Status */}
+                <div className="mb-4">
+                  <span className={`px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(job.status)}`}>
+                    {job.status === 'completed' ? '✓ Transcribed' : 
+                     job.status === 'processing' ? '⏳ Processing' : '⚠ Error'}
+                  </span>
+                </div>
 
                 {/* Transcription */}
-                <p className="text-gray-600 text-sm mb-4 line-clamp-3">
-                  "{job.transcription}"
-                </p>
-
-                {/* Budget */}
-                {(job.budget_min || job.budget_max) && (
-                  <div className="flex items-center gap-2 mb-3">
-                    <DollarSign className="w-4 h-4 text-green-600" />
-                    <span className="text-sm font-medium text-green-600">
-                      {formatBudget(job.budget_min, job.budget_max, job.currency)}
-                    </span>
-                  </div>
+                {job.transcription ? (
+                  <p className="text-gray-600 text-sm mb-4 line-clamp-3 italic">
+                    "{job.transcription}"
+                  </p>
+                ) : (
+                  <p className="text-gray-400 text-sm mb-4 italic">
+                    Transcription pending...
+                  </p>
                 )}
 
-                {/* Location */}
-                {job.location && (
-                  <div className="flex items-center gap-2 mb-4">
-                    <MapPin className="w-4 h-4 text-gray-400" />
-                    <span className="text-sm text-gray-600">{job.location}</span>
-                  </div>
-                )}
-
-                {/* Apply Button */}
-                <button className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 px-4 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Contact Client
+                {/* Play Recording Button */}
+                <button 
+                  onClick={() => playRecording(job)}
+                  className="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2 mb-3"
+                >
+                  {playingId === job.id ? (
+                    <>
+                      <Pause className="w-4 h-4" />
+                      Stop Recording
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      Play Recording
+                    </>
+                  )}
                 </button>
+
+                {/* Contact Button */}
+                <a 
+                  href={`https://wa.me/${job.caller_phone.replace(/\D/g, '')}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full bg-teal-600 hover:bg-teal-700 text-white py-2 px-3 rounded-md text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <MessageCircle className="w-4 h-4" />
+                  Contact via WhatsApp
+                </a>
               </div>
             ))}
           </div>
@@ -148,17 +199,11 @@ export default function FindWork() {
                 <Briefcase className="w-16 h-16 mx-auto" />
               </div>
               <h3 className="text-xl font-semibold text-gray-600 mb-2">
-                No jobs available right now
+                No voice recordings yet
               </h3>
               <p className="text-gray-500 mb-4">
-                Check back soon for new opportunities!
+                Call the hotline to post a job via voice!
               </p>
-              <Link 
-                to="/" 
-                className="inline-flex items-center gap-2 text-teal-600 hover:text-teal-700 font-medium"
-              >
-                Post your skills to get hired
-              </Link>
             </div>
           )}
 
@@ -171,7 +216,7 @@ export default function FindWork() {
                 <ul className="text-sm text-blue-800 space-y-1">
                   <li>• Always meet clients in public places</li>
                   <li>• Get payment details upfront</li>
-                  <li>• Report suspicious activity</li>
+                  <li>• Listen to full voice recordings before committing</li>
                   <li>• Trust your instincts</li>
                 </ul>
               </div>

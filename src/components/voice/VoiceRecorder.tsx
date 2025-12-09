@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react'
 import { Mic, Square, Play, Pause, Upload } from 'lucide-react'
-import { Button } from './ui/button'
+import { Button } from '../ui/button'
 
 interface VoiceRecorderProps {
   onRecordingComplete: (audioBlob: Blob) => void

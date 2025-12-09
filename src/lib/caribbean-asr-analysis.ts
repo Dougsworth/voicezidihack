@@ -1,129 +1,31 @@
 // Advanced Caribbean ASR Analysis
-// Leverages the specialized Caribbean speech model for deeper insights
+// Analyzes transcribed speech for Caribbean context, job extraction, and cultural patterns
 
-export interface CaribbeanASRResult {
-  transcription: string
-  confidence: number
-  accent: {
-    detected: string[]
-    primary: string
-    confidence: number
-  }
-  speechPatterns: {
-    pace: 'slow' | 'normal' | 'fast'
-    clarity: 'poor' | 'fair' | 'good' | 'excellent'
-    formality: 'casual' | 'semi-formal' | 'formal'
-  }
-  jobExtraction: {
-    jobType: 'job_posting' | 'work_request' | 'unclear'
-    skills: string[]
-    location: string | null
-    urgency: 'low' | 'medium' | 'high'
-    experience: 'beginner' | 'intermediate' | 'expert' | 'unclear'
-    budget: {
-      amount: number | null
-      currency: string
-      type: 'fixed' | 'hourly' | 'negotiable'
-    }
-  }
-  caribbeanContext: {
-    localTerms: string[]
-    culturalReferences: string[]
-    islandSpecific: boolean
-  }
-}
+export type { CaribbeanASRResult } from '@/types';
 
-// Caribbean accent detection patterns
-const CARIBBEAN_ACCENTS = {
-  jamaican: {
-    patterns: [
-      /\bmi\b/gi, // "mi" instead of "my" 
-      /\bdem\b/gi, // "dem" instead of "them"
-      /\byuh\b/gi, // "yuh" instead of "you"
-      /\bweh\b/gi, // "weh" (where)
-      /\bdeh\b/gi, // "deh" (there)
-      /nuh\s+true/gi, // "nuh true" (isn't that right)
-      /\bseh\b/gi, // "seh" (say)
-    ],
-    indicators: ['jamaica', 'kingston', 'spanish town', 'montego bay', 'jmd', 'patois']
-  },
-  trinidadian: {
-    patterns: [
-      /\brel\b/gi, // "rel" (really)
-      /\btrue\s+true/gi, // "true true"
-      /\boui\b/gi, // expression of surprise
-      /\bgyul\b/gi, // "girl"
-      /\bfete\b/gi, // party
-    ],
-    indicators: ['trinidad', 'tobago', 'port of spain', 'carnival', 'ttd']
-  },
-  barbadian: {
-    patterns: [
-      /\bwunna\b/gi, // "wunna" (you all)
-      /\bbrek\b/gi, // "brek" (break)
-      /\bpun\b/gi, // "pun" (on/upon)
-    ],
-    indicators: ['barbados', 'bridgetown', 'bds', 'bajan']
-  },
-  guyanais: {
-    patterns: [
-      /\babie\b/gi, // "abie" (but)
-      /\bgyaff\b/gi, // "gyaff" (gossip)
-      /\bcotch\b/gi, // "cotch" (sit/rest)
-    ],
-    indicators: ['guyana', 'georgetown', 'gyd']
-  }
-}
+import type { CaribbeanASRResult } from '@/types';
 
-// Caribbean job terms and skills
-const CARIBBEAN_JOB_TERMS = {
-  skills: {
-    'mek food': ['cooking', 'chef', 'catering'],
-    'fix car': ['mechanic', 'automotive', 'repair'],
-    'trim yard': ['gardening', 'landscaping', 'yard work'],
-    'wash house': ['cleaning', 'domestic work', 'housekeeping'],
-    'drive people': ['driver', 'taxi', 'transportation'],
-    'fix light': ['electrician', 'electrical work'],
-    'fix pipe': ['plumber', 'plumbing'],
-    'build thing': ['construction', 'carpentry', 'handyman'],
-    'teach pickney': ['tutoring', 'education', 'childcare'],
-    'sell goods': ['vendor', 'sales', 'retail'],
-    'security work': ['security guard', 'watchman'],
-    'paint house': ['painter', 'decoration'],
-    'fix roof': ['roofing', 'construction'],
-    'style hair': ['hairdresser', 'barber', 'beauty']
-  },
-  urgency: {
-    high: ['urgent', 'asap', 'right now', 'emergency', 'quick quick', 'inna hurry'],
-    medium: ['soon', 'dis week', 'dis month', 'before weekend'],
-    low: ['when time permit', 'no rush', 'sometime']
-  },
-  locations: {
-    jamaica: ['kingston', 'spanish town', 'montego bay', 'portmore', 'may pen', 'mandeville', 'ocho rios'],
-    trinidad: ['port of spain', 'san fernando', 'chaguanas', 'arima', 'point fortin'],
-    barbados: ['bridgetown', 'speightstown', 'oistins', 'st lawrence'],
-    guyana: ['georgetown', 'new amsterdam', 'linden', 'bartica']
-  }
-}
-
+// Main analysis function that processes Caribbean speech
 export async function analyzeCaribbeanSpeech(transcription: string): Promise<CaribbeanASRResult> {
-  const text = transcription.toLowerCase()
+  console.log('>à Starting Caribbean speech analysis...');
   
-  // Detect accent
-  const accent = detectAccent(transcription)
+  const lowerText = transcription.toLowerCase();
   
-  // Analyze speech patterns
-  const speechPatterns = analyzeSpeechPatterns(transcription)
+  // Analyze Caribbean accent markers
+  const accent = analyzeAccent(transcription);
   
-  // Extract job information with Caribbean context
-  const jobExtraction = extractJobInfoCaribbean(transcription)
+  // Extract speech patterns
+  const speechPatterns = analyzeSpeechPatterns(transcription);
   
-  // Find Caribbean-specific context
-  const caribbeanContext = findCaribbeanContext(transcription)
+  // Extract job/work information
+  const jobExtraction = extractJobInfo(transcription);
   
-  // Calculate overall confidence based on Caribbean model understanding
-  const confidence = calculateCaribbeanConfidence(transcription, accent, jobExtraction)
-
+  // Identify Caribbean cultural context
+  const caribbeanContext = analyzeCaribbeanContext(transcription);
+  
+  // Calculate overall confidence
+  const confidence = calculateConfidence(transcription, accent, speechPatterns, jobExtraction);
+  
   return {
     transcription,
     confidence,
@@ -131,232 +33,300 @@ export async function analyzeCaribbeanSpeech(transcription: string): Promise<Car
     speechPatterns,
     jobExtraction,
     caribbeanContext
-  }
+  };
 }
 
-function detectAccent(text: string): CaribbeanASRResult['accent'] {
-  const detected: string[] = []
-  let maxScore = 0
-  let primaryAccent = 'general_caribbean'
+// Analyze Caribbean accent markers and patterns
+function analyzeAccent(text: string): CaribbeanASRResult['accent'] {
+  const lowerText = text.toLowerCase();
+  const detected: string[] = [];
+  let primary = 'general_caribbean';
+  let confidence = 0.5;
   
-  for (const [accentName, accentData] of Object.entries(CARIBBEAN_ACCENTS)) {
-    let score = 0
-    
-    // Check for speech patterns
-    for (const pattern of accentData.patterns) {
-      if (pattern.test(text)) {
-        score += 2
-      }
-    }
-    
-    // Check for location/cultural indicators
-    for (const indicator of accentData.indicators) {
-      if (text.includes(indicator)) {
-        score += 1
-      }
-    }
-    
-    if (score > 0) {
-      detected.push(accentName)
-      if (score > maxScore) {
-        maxScore = score
-        primaryAccent = accentName
-      }
+  // Jamaican Patois markers
+  const jamaicanPatterns = [
+    /\bmi\b/, /\bdi\b/, /\bdem\b/, /\bdat\b/, /\byah\b/, /\bseh\b/, 
+    /\bnuh\b/, /\bweh\b/, /\bmek\b/, /\bdeh\b/, /\bpon\b/, /\bing\b$/,
+    /\bgwan\b/, /\byute\b/, /\bbredrin\b/, /\bsista\b/, /\bfimi\b/
+  ];
+  
+  // Trinidad patterns
+  const trinidadPatterns = [
+    /\bgyul\b/, /\bfete\b/, /\blime\b/, /\btabanca\b/, /\bmamaguy\b/,
+    /\bpalance\b/, /\bfas\b/, /\bchook\b/, /\bbacchanal\b/
+  ];
+  
+  // Barbadian patterns
+  const barbadianPatterns = [
+    /\bbajan\b/, /\bcou\b/, /\bwunna\b/, /\bpelt\b/, /\bvex\b/
+  ];
+  
+  // Check for Jamaican
+  const jamaicanMatches = jamaicanPatterns.filter(pattern => pattern.test(lowerText)).length;
+  if (jamaicanMatches > 0) {
+    detected.push('jamaican');
+    if (jamaicanMatches >= 2) {
+      primary = 'jamaican';
+      confidence = Math.min(0.9, 0.6 + (jamaicanMatches * 0.1));
     }
   }
   
-  const confidence = Math.min(maxScore / 5, 1) // Normalize to 0-1
+  // Check for Trinidadian
+  const trinidadMatches = trinidadPatterns.filter(pattern => pattern.test(lowerText)).length;
+  if (trinidadMatches > 0) {
+    detected.push('trinidadian');
+    if (trinidadMatches >= jamaicanMatches) {
+      primary = 'trinidadian';
+      confidence = Math.min(0.9, 0.6 + (trinidadMatches * 0.1));
+    }
+  }
+  
+  // Check for Barbadian
+  const barbadianMatches = barbadianPatterns.filter(pattern => pattern.test(lowerText)).length;
+  if (barbadianMatches > 0) {
+    detected.push('barbadian');
+    if (barbadianMatches >= Math.max(jamaicanMatches, trinidadMatches)) {
+      primary = 'barbadian';
+      confidence = Math.min(0.9, 0.6 + (barbadianMatches * 0.1));
+    }
+  }
+  
+  // If no specific patterns detected, check for general Caribbean markers
+  const generalCaribbeanPatterns = [
+    /\baan\b/, /\bwid\b/, /\bfuh\b/, /\bdey\b/, /\bseh\b/, /\byuh\b/
+  ];
+  
+  const generalMatches = generalCaribbeanPatterns.filter(pattern => pattern.test(lowerText)).length;
+  if (detected.length === 0 && generalMatches > 0) {
+    detected.push('general_caribbean');
+    confidence = Math.min(0.7, 0.4 + (generalMatches * 0.1));
+  }
   
   return {
     detected,
-    primary: primaryAccent,
+    primary,
     confidence
-  }
+  };
 }
 
+// Analyze speech patterns and quality
 function analyzeSpeechPatterns(text: string): CaribbeanASRResult['speechPatterns'] {
-  const wordCount = text.split(' ').length
-  const avgWordsPerMinute = wordCount * 2 // Assume 30-second clips
+  const words = text.split(/\s+/);
+  const avgWordLength = words.reduce((acc, word) => acc + word.length, 0) / words.length;
   
-  // Determine pace based on typical Caribbean speech patterns
-  let pace: 'slow' | 'normal' | 'fast' = 'normal'
-  if (avgWordsPerMinute < 80) pace = 'slow'
-  else if (avgWordsPerMinute > 140) pace = 'fast'
+  // Determine pace based on text characteristics
+  let pace: 'slow' | 'normal' | 'fast' = 'normal';
+  if (words.length < 30) pace = 'slow';
+  else if (words.length > 100) pace = 'fast';
   
-  // Clarity based on coherence and completeness
-  let clarity: 'poor' | 'fair' | 'good' | 'excellent' = 'good'
-  if (text.length < 20) clarity = 'poor'
-  else if (text.includes('...') || text.includes('[unclear]')) clarity = 'fair'
-  else if (text.length > 100) clarity = 'excellent'
+  // Determine clarity based on completeness and coherence
+  let clarity: 'poor' | 'fair' | 'good' | 'excellent' = 'fair';
+  const hasCompleteThoughts = /[.!?]/.test(text);
+  const hasStructure = words.length > 10;
+  const hasDetails = /\b(budget|pay|cost|price|location|area|time|when|where)\b/i.test(text);
   
-  // Formality based on language patterns
-  let formality: 'casual' | 'semi-formal' | 'formal' = 'casual'
-  const formalWords = ['please', 'thank you', 'sir', 'madam', 'kindly', 'respectfully']
-  const casualWords = ['hey', 'yeah', 'nah', 'cool', 'bredrin', 'sistren']
+  if (hasCompleteThoughts && hasStructure && hasDetails) {
+    clarity = 'excellent';
+  } else if (hasCompleteThoughts && hasStructure) {
+    clarity = 'good';
+  } else if (hasStructure) {
+    clarity = 'fair';
+  } else {
+    clarity = 'poor';
+  }
   
-  const formalCount = formalWords.filter(word => text.includes(word)).length
-  const casualCount = casualWords.filter(word => text.includes(word)).length
+  // Determine formality
+  let formality: 'casual' | 'semi-formal' | 'formal' = 'casual';
+  const formalWords = /\b(require|request|professional|service|assistance|kindly|please|thank you)\b/i;
+  const casualWords = /\b(need|want|help|fix|do|make|get)\b/i;
   
-  if (formalCount > casualCount + 1) formality = 'formal'
-  else if (formalCount > 0) formality = 'semi-formal'
+  if (formalWords.test(text) && !casualWords.test(text)) {
+    formality = 'formal';
+  } else if (formalWords.test(text) && casualWords.test(text)) {
+    formality = 'semi-formal';
+  }
   
-  return { pace, clarity, formality }
+  return {
+    pace,
+    clarity,
+    formality
+  };
 }
 
-function extractJobInfoCaribbean(text: string): CaribbeanASRResult['jobExtraction'] {
-  const lowerText = text.toLowerCase()
+// Extract job/work information from transcription
+function extractJobInfo(text: string): CaribbeanASRResult['jobExtraction'] {
+  const lowerText = text.toLowerCase();
   
-  // Determine job type with Caribbean context
-  let jobType: 'job_posting' | 'work_request' | 'unclear' = 'unclear'
+  // Determine job type
+  const jobPostingKeywords = ['need', 'looking for', 'want', 'require', 'hiring', 'help with', 'fix', 'repair'];
+  const workRequestKeywords = ['i am', 'i\'m', 'available', 'i do', 'i offer', 'experienced', 'skilled', 'can provide'];
   
-  const seekingWork = [
-    'mi looking for work', 'mi need work', 'mi want work', 'mi available',
-    'i looking for job', 'i need job', 'i can do', 'mi skilled in',
-    'i experienced', 'mi good at', 'hire mi', 'employ mi'
-  ]
+  const hasJobKeywords = jobPostingKeywords.some(keyword => lowerText.includes(keyword));
+  const hasWorkKeywords = workRequestKeywords.some(keyword => lowerText.includes(keyword));
   
-  const offeringJob = [
-    'mi need someone', 'looking for worker', 'want someone to', 'need help with',
-    'hiring', 'job available', 'work available', 'mi want', 'seeking'
-  ]
+  let jobType: 'job_posting' | 'work_request' | 'unclear' = 'unclear';
+  if (hasJobKeywords && !hasWorkKeywords) jobType = 'job_posting';
+  else if (hasWorkKeywords && !hasJobKeywords) jobType = 'work_request';
+  else if (hasJobKeywords) jobType = 'job_posting'; // Default to job posting if both
   
-  if (seekingWork.some(phrase => lowerText.includes(phrase))) {
-    jobType = 'work_request'
-  } else if (offeringJob.some(phrase => lowerText.includes(phrase))) {
-    jobType = 'job_posting'
-  }
+  // Extract skills
+  const skillKeywords = [
+    'plumbing', 'plumber', 'electrician', 'electrical', 'carpenter', 'carpentry',
+    'mechanic', 'mechanical', 'cook', 'cooking', 'chef', 'cleaning', 'cleaner',
+    'gardening', 'gardener', 'painting', 'painter', 'masonry', 'mason',
+    'welding', 'welder', 'driving', 'driver', 'security', 'guard',
+    'teaching', 'teacher', 'tutoring', 'tutor', 'childcare', 'babysitter',
+    'hairstylist', 'barber', 'salon', 'manicure', 'pedicure', 'massage',
+    'construction', 'builder', 'roofing', 'roofer', 'tiling', 'tiler',
+    'graphic design', 'designer', 'photography', 'photographer', 'video',
+    'computer', 'it support', 'web', 'website', 'repair', 'technician'
+  ];
   
-  // Extract skills with Caribbean terminology
-  const skills: string[] = []
-  for (const [caribbeanTerm, skillList] of Object.entries(CARIBBEAN_JOB_TERMS.skills)) {
-    if (lowerText.includes(caribbeanTerm)) {
-      skills.push(...skillList)
-    }
-  }
+  const skills = skillKeywords.filter(skill => lowerText.includes(skill));
   
   // Extract location
-  let location: string | null = null
-  for (const [island, locations] of Object.entries(CARIBBEAN_JOB_TERMS.locations)) {
-    for (const loc of locations) {
-      if (lowerText.includes(loc)) {
-        location = loc.split(' ').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ')
-        break
-      }
-    }
-    if (location) break
-  }
+  const jamaicanLocations = [
+    'kingston', 'spanish town', 'montego bay', 'portmore', 'may pen',
+    'old harbour', 'mandeville', 'savanna-la-mar', 'port antonio', 'ocho rios',
+    'st. andrew', 'st. catherine', 'st. james', 'clarendon', 'manchester',
+    'westmoreland', 'portland', 'st. ann', 'st. elizabeth', 'trelawny',
+    'st. mary', 'st. thomas', 'hanover', 'parishes'
+  ];
   
-  // Determine urgency
-  let urgency: 'low' | 'medium' | 'high' = 'medium'
-  if (CARIBBEAN_JOB_TERMS.urgency.high.some(term => lowerText.includes(term))) {
-    urgency = 'high'
-  } else if (CARIBBEAN_JOB_TERMS.urgency.low.some(term => lowerText.includes(term))) {
-    urgency = 'low'
-  }
+  const trinidadLocations = [
+    'port of spain', 'san fernando', 'chaguanas', 'point fortin', 'arima',
+    'diego martin', 'tunapuna', 'st. joseph', 'couva', 'sangre grande'
+  ];
   
-  // Determine experience level
-  let experience: 'beginner' | 'intermediate' | 'expert' | 'unclear' = 'unclear'
-  if (lowerText.includes('new to') || lowerText.includes('learning')) {
-    experience = 'beginner'
-  } else if (lowerText.includes('experienced') || lowerText.includes('professional') || lowerText.includes('years')) {
-    experience = 'expert'
-  } else if (lowerText.includes('some experience') || lowerText.includes('can do')) {
-    experience = 'intermediate'
-  }
+  const allLocations = [...jamaicanLocations, ...trinidadLocations];
+  const location = allLocations.find(loc => lowerText.includes(loc)) || null;
+  
+  // Extract urgency
+  const urgencyKeywords = {
+    high: ['urgent', 'asap', 'emergency', 'immediately', 'right now', 'today'],
+    medium: ['soon', 'this week', 'next week', 'quick'],
+    low: ['when available', 'no rush', 'flexible']
+  };
+  
+  let urgency: 'low' | 'medium' | 'high' = 'medium';
+  if (urgencyKeywords.high.some(word => lowerText.includes(word))) urgency = 'high';
+  else if (urgencyKeywords.low.some(word => lowerText.includes(word))) urgency = 'low';
+  
+  // Extract experience level
+  const experienceKeywords = {
+    expert: ['experienced', 'expert', 'professional', 'certified', 'licensed', 'qualified'],
+    intermediate: ['some experience', 'learning', 'growing'],
+    beginner: ['new', 'beginner', 'starting', 'first time']
+  };
+  
+  let experience: 'beginner' | 'intermediate' | 'expert' | 'unclear' = 'unclear';
+  if (experienceKeywords.expert.some(word => lowerText.includes(word))) experience = 'expert';
+  else if (experienceKeywords.intermediate.some(word => lowerText.includes(word))) experience = 'intermediate';
+  else if (experienceKeywords.beginner.some(word => lowerText.includes(word))) experience = 'beginner';
   
   // Extract budget
-  const budget = extractBudgetCaribbean(text)
+  const budgetRegex = /(\d+(?:,\d+)*)\s*(?:jmd|dollars?|bucks?)/gi;
+  const rangeRegex = /(\d+(?:,\d+)*)\s*(?:to|\-|and)\s*(\d+(?:,\d+)*)/gi;
+  
+  let budget = {
+    amount: null as number | null,
+    currency: 'JMD',
+    type: 'negotiable' as 'fixed' | 'hourly' | 'negotiable'
+  };
+  
+  const rangeMatch = rangeRegex.exec(text);
+  const budgetMatch = budgetRegex.exec(text);
+  
+  if (rangeMatch) {
+    const min = parseInt(rangeMatch[1].replace(/,/g, ''));
+    const max = parseInt(rangeMatch[2].replace(/,/g, ''));
+    budget.amount = Math.round((min + max) / 2);
+    budget.type = 'negotiable';
+  } else if (budgetMatch) {
+    budget.amount = parseInt(budgetMatch[1].replace(/,/g, ''));
+    budget.type = lowerText.includes('per hour') || lowerText.includes('hourly') ? 'hourly' : 'fixed';
+  }
   
   return {
     jobType,
-    skills: [...new Set(skills)], // Remove duplicates
+    skills,
     location,
     urgency,
     experience,
     budget
-  }
+  };
 }
 
-function extractBudgetCaribbean(text: string): CaribbeanASRResult['jobExtraction']['budget'] {
-  // Caribbean currency patterns
-  const budgetPatterns = [
-    /(\d+(?:,\d+)*)\s*(?:jmd|jamaica|dollar)/gi,
-    /(\d+(?:,\d+)*)\s*(?:ttd|trinidad|tt)/gi,
-    /(\d+(?:,\d+)*)\s*(?:bds|barbados|bajan)/gi,
-    /(\d+(?:,\d+)*)\s*(?:gyd|guyana)/gi,
-    /\$\s*(\d+(?:,\d+)*)/gi
-  ]
+// Analyze Caribbean cultural context and local terms
+function analyzeCaribbeanContext(text: string): CaribbeanASRResult['caribbeanContext'] {
+  const lowerText = text.toLowerCase();
   
-  for (const pattern of budgetPatterns) {
-    const match = pattern.exec(text)
-    if (match) {
-      const amount = parseInt(match[1].replace(/,/g, ''))
-      const currency = determineCurrency(text)
-      const type = text.includes('per hour') || text.includes('hourly') ? 'hourly' : 
-                   text.includes('negotiable') ? 'negotiable' : 'fixed'
-      
-      return { amount, currency, type }
-    }
-  }
-  
-  return { amount: null, currency: 'JMD', type: 'negotiable' }
-}
-
-function determineCurrency(text: string): string {
-  const lowerText = text.toLowerCase()
-  if (lowerText.includes('trinidad') || lowerText.includes('ttd')) return 'TTD'
-  if (lowerText.includes('barbados') || lowerText.includes('bds')) return 'BDS'
-  if (lowerText.includes('guyana') || lowerText.includes('gyd')) return 'GYD'
-  return 'JMD' // Default to Jamaican dollar
-}
-
-function findCaribbeanContext(text: string): CaribbeanASRResult['caribbeanContext'] {
-  const lowerText = text.toLowerCase()
-  
-  // Caribbean-specific terms
-  const localTerms = [
-    'bredrin', 'sistren', 'pickney', 'ting', 'yute', 'dawg', 'spar',
-    'bashment', 'fete', 'lime', 'tabanca', 'jammette', 'dougla'
-  ].filter(term => lowerText.includes(term))
+  // Caribbean local terms
+  const localTermsDict = [
+    'ackee', 'saltfish', 'curry goat', 'jerk', 'patty', 'festival', 'bammy',
+    'duppy', 'obeah', 'anansi', 'nyam', 'yam', 'plantain', 'breadfruit',
+    'callaloo', 'doubles', 'roti', 'pelau', 'macaroni pie', 'oil down',
+    'bake and shark', 'flying fish', 'cou cou', 'pepperpot',
+    'bashment', 'dancehall', 'soca', 'calypso', 'reggae', 'steelpan',
+    'cricket', 'dominos', 'football', 'netball'
+  ];
   
   // Cultural references
-  const culturalReferences = [
-    'carnival', 'mas', 'calypso', 'soca', 'reggae', 'dancehall',
-    'cricket', 'dominoes', 'rum shop', 'sound system'
-  ].filter(ref => lowerText.includes(ref))
+  const culturalTerms = [
+    'carnival', 'crop over', 'emancipation', 'independence', 'christmas morning',
+    'new year\'s day', 'easter', 'labour day', 'heroes day', 'boxing day',
+    'church', 'pastor', 'minister', 'revival', 'nine night',
+    'family', 'cousin', 'auntie', 'uncle', 'granny', 'grandfather',
+    'community', 'neighbor', 'yard', 'village', 'town'
+  ];
   
-  // Check if content is island-specific
-  const islandSpecific = Object.values(CARIBBEAN_JOB_TERMS.locations)
-    .flat()
-    .some(location => lowerText.includes(location))
+  const localTerms = localTermsDict.filter(term => lowerText.includes(term));
+  const culturalReferences = culturalTerms.filter(term => lowerText.includes(term));
+  
+  // Check for island-specific references
+  const islandSpecific = /\b(jamaica|trinidad|barbados|guyana|bahamas|st\.\s*lucia|grenada|dominica|antigua|st\.\s*kitts)\b/i.test(text);
   
   return {
     localTerms,
     culturalReferences,
     islandSpecific
-  }
+  };
 }
 
-function calculateCaribbeanConfidence(
-  text: string, 
-  accent: CaribbeanASRResult['accent'], 
+// Calculate overall confidence score
+function calculateConfidence(
+  text: string,
+  accent: CaribbeanASRResult['accent'],
+  speechPatterns: CaribbeanASRResult['speechPatterns'],
   jobExtraction: CaribbeanASRResult['jobExtraction']
 ): number {
-  let confidence = 0.5 // Base confidence
+  let confidence = 0.5; // Base confidence
   
-  // Boost confidence for clear Caribbean patterns
-  confidence += accent.confidence * 0.3
+  // Boost based on accent detection
+  confidence += accent.confidence * 0.3;
   
-  // Boost for successful job extraction
-  if (jobExtraction.jobType !== 'unclear') confidence += 0.15
-  if (jobExtraction.skills.length > 0) confidence += 0.1
-  if (jobExtraction.location) confidence += 0.1
+  // Boost based on speech clarity
+  const clarityBoost = {
+    poor: -0.1,
+    fair: 0,
+    good: 0.15,
+    excellent: 0.25
+  };
+  confidence += clarityBoost[speechPatterns.clarity];
   
-  // Boost for text length and completeness
-  if (text.length > 50) confidence += 0.1
-  if (text.length > 100) confidence += 0.05
+  // Boost based on job information completeness
+  let jobInfoScore = 0;
+  if (jobExtraction.jobType !== 'unclear') jobInfoScore += 0.1;
+  if (jobExtraction.skills.length > 0) jobInfoScore += 0.1;
+  if (jobExtraction.location) jobInfoScore += 0.1;
+  if (jobExtraction.budget.amount) jobInfoScore += 0.1;
   
-  return Math.min(confidence, 0.95) // Cap at 95%
+  confidence += jobInfoScore;
+  
+  // Boost for text length and structure
+  const words = text.split(/\s+/).length;
+  if (words > 20) confidence += 0.1;
+  if (words > 50) confidence += 0.1;
+  
+  return Math.max(0.1, Math.min(0.95, confidence));
 }
