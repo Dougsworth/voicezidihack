@@ -91,15 +91,17 @@ const HeroSection = () => {
       console.log('✅ Saved to voice_jobs')
       
       setProcessingStage('complete')
-      setTimeout(() => {
-        setShowSuccess(true)
-      }, 500)
+      setShowSuccess(true)
+
+      // setTimeout(() => {
+      //   setShowSuccess(true)
+      // }, 500)
       
-      // Reset after showing success
-      setTimeout(() => {
-        setShowSuccess(false)
-        setTranscription(null)
-      }, UI_CONFIG.successMessageDuration)
+      // // Reset after showing success
+      // setTimeout(() => {
+      //   setShowSuccess(false)
+      //   setTranscription(null)
+      // }, UI_CONFIG.successMessageDuration)
       
     } catch (error) {
       console.error('Error processing voice note:', error)
