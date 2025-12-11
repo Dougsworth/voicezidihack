@@ -9,7 +9,6 @@ import type { CaribbeanASRResult } from '@/types';
 export async function analyzeCaribbeanSpeech(transcription: string): Promise<CaribbeanASRResult> {
   console.log('>à Starting Caribbean speech analysis...');
   
-  const lowerText = transcription.toLowerCase();
   
   // Analyze Caribbean accent markers
   const accent = analyzeAccent(transcription);
@@ -112,7 +111,6 @@ function analyzeAccent(text: string): CaribbeanASRResult['accent'] {
 // Analyze speech patterns and quality
 function analyzeSpeechPatterns(text: string): CaribbeanASRResult['speechPatterns'] {
   const words = text.split(/\s+/);
-  const avgWordLength = words.reduce((acc, word) => acc + word.length, 0) / words.length;
   
   // Determine pace based on text characteristics
   let pace: 'slow' | 'normal' | 'fast' = 'normal';

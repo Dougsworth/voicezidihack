@@ -22,3 +22,7 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Files with API keys
+twilio-webhook-with-gpt.js
+test-openai.js
