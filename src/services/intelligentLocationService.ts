@@ -1,5 +1,6 @@
 // Intelligent Location Service - Uses AI context to understand Caribbean locations
 import { CaribbeanASRService } from './caribbeanASRService';
+import { GeoLocationValidationService } from './geoLocationValidationService';
 
 export class IntelligentLocationService {
   /**
@@ -105,27 +106,40 @@ export class IntelligentLocationService {
   }
   
   /**
-   * Use AI context to enhance location understanding
-   * This could be expanded to use GPT or other models
+   * Use AI context and geocoding to enhance location understanding
    */
-  static async enhanceWithAI(text: string, transcription: string): Promise<string> {
-    // For now, use pattern-based enhancement
-    // In future, this could call GPT API for better understanding
-    
-    // Extract any location found
-    const location = this.extractLocation(transcription);
-    
-    if (location) {
-      // Replace the original location with the corrected one
-      const locationRegex = new RegExp(
-        location.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 
-        'gi'
+  static async enhanceWithAI(context: string, transcription: string): Promise<string> {
+    try {
+      // First try geocoding validation for real location matching
+      const geoValidated = await GeoLocationValidationService.smartCorrectLocation(
+        transcription,
+        context || transcription
       );
       
-      return transcription.replace(locationRegex, location);
+      if (geoValidated !== transcription) {
+        return geoValidated;
+      }
+      
+      // Fallback to pattern-based correction
+      const location = this.extractLocation(transcription);
+      
+      if (location) {
+        const corrected = this.intelligentCorrection(location, transcription);
+        if (corrected !== location) {
+          return transcription.replace(
+            new RegExp(location.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi'),
+            corrected
+          );
+        }
+      }
+      
+      return transcription;
+      
+    } catch (error) {
+      console.error('Location enhancement error:', error);
+      // Return original if enhancement fails
+      return transcription;
     }
-    
-    return transcription;
   }
   
   /**
