@@ -2,6 +2,7 @@
 import { supabase } from '../lib/supabase'
 import type { VoiceJob } from '../types'
 import { TranscriptionService } from './transcriptionService'
+import { JobCategorizationService, type JobCategory } from './jobCategorizationService'
 
 export class VoiceJobsService {
   static async getVoiceJobs(filters?: { gigType?: 'job_posting' | 'work_request' }): Promise<VoiceJob[]> {
@@ -352,6 +353,90 @@ export class VoiceJobsService {
         .update({ status: 'error' })
         .eq('id', jobId)
       return null
+    }
+  }
+  
+  /**
+   * Categorize a voice job based on its transcription
+   */
+  static async categorizeVoiceJob(jobId: string): Promise<void> {
+    try {
+      // Get the job
+      const { data: job, error } = await supabase
+        .from('voice_jobs')
+        .select('*')
+        .eq('id', jobId)
+        .single()
+      
+      if (error || !job || !job.transcription) {
+        throw new Error('Job not found or no transcription available')
+      }
+      
+      // Categorize the transcription
+      const categorization = JobCategorizationService.categorize(job.transcription)
+      
+      console.log(`📊 Categorized job ${jobId}:`, categorization)
+      
+      // Map our categories to existing gig_type values
+      const gigType = categorization.category === 'find_work' ? 'work_request' : 'job_posting'
+      
+      // Update the job with categorization
+      const { error: updateError } = await supabase
+        .from('voice_jobs')
+        .update({
+          gig_type: gigType,
+          category_confidence: categorization.confidence,
+          category_indicators: categorization.indicators
+        })
+        .eq('id', jobId)
+      
+      if (updateError) {
+        throw updateError
+      }
+      
+      console.log(`✅ Updated job ${jobId} category to: ${gigType}`)
+      
+    } catch (error) {
+      console.error('Error categorizing voice job:', error)
+      throw error
+    }
+  }
+  
+  /**
+   * Automatically categorize all uncategorized voice jobs
+   */
+  static async categorizePendingJobs(): Promise<void> {
+    try {
+      // Get jobs that need categorization (have transcription but no gig_type)
+      const { data: jobs, error } = await supabase
+        .from('voice_jobs')
+        .select('id, transcription')
+        .not('transcription', 'is', null)
+        .is('gig_type', null)
+        .limit(10) // Process in batches
+      
+      if (error) {
+        throw error
+      }
+      
+      if (!jobs || jobs.length === 0) {
+        console.log('📝 No jobs need categorization')
+        return
+      }
+      
+      console.log(`📊 Categorizing ${jobs.length} jobs...`)
+      
+      // Process each job
+      for (const job of jobs) {
+        await this.categorizeVoiceJob(job.id)
+        // Small delay to be gentle on the database
+        await new Promise(resolve => setTimeout(resolve, 100))
+      }
+      
+      console.log(`✅ Completed categorizing ${jobs.length} jobs`)
+      
+    } catch (error) {
+      console.error('Error in batch categorization:', error)
     }
   }
 }

@@ -20,6 +20,7 @@ export default function HireWorkers() {
   const fetchWorkers = async () => {
     try {
       const data = await VoiceJobsService.getVoiceJobs({ gigType: 'work_request' })
+      console.log('👷 Fetched work requests:', data.length)
       setWorkers(data)
     } catch (error) {
       console.error('Error fetching workers:', error)
@@ -32,7 +33,11 @@ export default function HireWorkers() {
     try {
       setTranscribing(true)
       const result = await VoiceJobsService.processPendingTranscriptions()
-      if (result.processed > 0) await fetchWorkers()
+      if (result.processed > 0) {
+        // Also categorize any pending jobs
+        await VoiceJobsService.categorizePendingJobs()
+        await fetchWorkers()
+      }
     } catch (error) {
       console.error('Error processing transcriptions:', error)
     } finally {
@@ -45,6 +50,8 @@ export default function HireWorkers() {
     try {
       setTranscribing(true)
       await VoiceJobsService.transcribeVoiceJob(jobId)
+      // Categorize the job after transcription
+      await VoiceJobsService.categorizeVoiceJob(jobId)
       await fetchWorkers()
     } catch (error) {
       console.error('Error transcribing:', error)

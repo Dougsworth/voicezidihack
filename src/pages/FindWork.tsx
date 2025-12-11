@@ -34,6 +34,8 @@ export default function FindWork() {
       setTranscribing(true)
       const result = await VoiceJobsService.processPendingTranscriptions()
       if (result.processed > 0) {
+        // Also categorize any pending jobs
+        await VoiceJobsService.categorizePendingJobs()
         await fetchJobs()
       }
     } catch (error) {
@@ -48,6 +50,8 @@ export default function FindWork() {
     try {
       setTranscribing(true)
       await VoiceJobsService.transcribeVoiceJob(jobId)
+      // Categorize the job after transcription
+      await VoiceJobsService.categorizeVoiceJob(jobId)
       await fetchJobs()
     } catch (error) {
       console.error('Error transcribing:', error)

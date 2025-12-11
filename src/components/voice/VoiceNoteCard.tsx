@@ -3,6 +3,8 @@ import { useState } from 'react'
 import { Play, Pause, MessageCircle, MapPin, DollarSign, Clock, Volume2 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { Badge } from '../ui/badge'
+import { CategoryBadge } from '../ui/CategoryBadge'
+import { JobCategorizationService, type JobCategory } from '@/services/jobCategorizationService'
 import type { VoiceGig } from '@/lib/supabase'
 import MatchExplanation from '../feedback/MatchExplanation'
 import type { MatchScore } from '@/lib/matching'
@@ -17,6 +19,11 @@ interface VoiceNoteCardProps {
 export default function VoiceNoteCard({ gig, matchScore, currentGig, onContact }: VoiceNoteCardProps) {
   const [isPlaying, setIsPlaying] = useState(false)
   const [showTranscription, setShowTranscription] = useState(false)
+  
+  // Categorize the gig based on its transcription
+  const categorization = gig.transcription 
+    ? JobCategorizationService.categorize(gig.transcription)
+    : null
 
   const handlePlay = () => {
     if (gig.voice_url) {
@@ -72,6 +79,17 @@ export default function VoiceNoteCard({ gig, matchScore, currentGig, onContact }
           </Badge>
         )}
       </div>
+
+      {/* Category Badge */}
+      {categorization && (
+        <div className="mb-4">
+          <CategoryBadge 
+            category={categorization.category}
+            confidence={categorization.confidence}
+            showConfidence={true}
+          />
+        </div>
+      )}
 
       {/* Transcription Toggle */}
       <div className="mb-4">
