@@ -189,6 +189,41 @@ app.get('/api/gigs', async (req, res) => {
   }
 });
 
+// Geocode proxy endpoint to avoid CORS issues
+app.get('/api/geocode', async (req, res) => {
+  try {
+    const { query, country = 'jm' } = req.query;
+    
+    if (!query) {
+      return res.status(400).json({ success: false, error: 'Query parameter required' });
+    }
+
+    const response = await axios.get('https://nominatim.openstreetmap.org/search', {
+      params: {
+        q: query,
+        countrycodes: country,
+        format: 'json',
+        addressdetails: 1,
+        limit: 5,
+        'accept-language': 'en'
+      },
+      headers: {
+        'User-Agent': 'LinkUpWork/1.0 (voice-gig-connect)'
+      },
+      timeout: 3000
+    });
+
+    res.json({ success: true, data: response.data });
+  } catch (error) {
+    console.error('Geocode API error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Geocoding service temporarily unavailable',
+      details: error.message 
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Voice Gig Connect API running on port ${PORT}`);

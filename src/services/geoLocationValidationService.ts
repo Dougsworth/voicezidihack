@@ -12,8 +12,8 @@ interface GeocodingResult {
 }
 
 export class GeoLocationValidationService {
-  // Using OpenStreetMap's Nominatim API (free, no API key required)
-  private static readonly NOMINATIM_API = 'https://nominatim.openstreetmap.org/search';
+  // Using local API proxy to avoid CORS issues
+  private static readonly GEOCODE_API = '/api/geocode';
   
   // Caribbean countries to focus our searches
   private static readonly CARIBBEAN_COUNTRIES = [
@@ -75,32 +75,27 @@ export class GeoLocationValidationService {
   }
   
   /**
-   * Search for a location using Nominatim API
+   * Search for a location using local API proxy
    */
   private static async searchLocation(
     query: string, 
     country?: string
   ): Promise<GeocodingResult | null> {
+    // Map country names to country codes
+    let countryCode = 'jm'; // Default to Jamaica
+    if (country === 'Jamaica') countryCode = 'jm';
+    if (country === 'Trinidad and Tobago') countryCode = 'tt';
+    if (country === 'Barbados') countryCode = 'bb';
+    if (country === 'Guyana') countryCode = 'gy';
+    
+    const searchQuery = country ? `${query}, ${country}` : query;
     const params = new URLSearchParams({
-      q: country ? `${query}, ${country}` : query,
-      format: 'json',
-      addressdetails: '1',
-      limit: '5',
-      'accept-language': 'en'
+      query: searchQuery,
+      country: countryCode
     });
     
-    // Add country code restriction if known
-    if (country === 'Jamaica') params.append('countrycodes', 'jm');
-    if (country === 'Trinidad and Tobago') params.append('countrycodes', 'tt');
-    if (country === 'Barbados') params.append('countrycodes', 'bb');
-    if (country === 'Guyana') params.append('countrycodes', 'gy');
-    
     try {
-      const response = await fetch(`${this.NOMINATIM_API}?${params}`, {
-        headers: {
-          'User-Agent': 'VoiceGigConnect/1.0'
-        }
-      });
+      const response = await fetch(`${this.GEOCODE_API}?${params}`);
       
       if (!response.ok) {
         throw new Error(`Geocoding API error: ${response.status}`);
@@ -108,7 +103,7 @@ export class GeoLocationValidationService {
       
       const results = await response.json();
       
-      if (results.length === 0) {
+      if (!results || results.length === 0) {
         return null;
       }
       
@@ -129,7 +124,7 @@ export class GeoLocationValidationService {
       return null;
       
     } catch (error) {
-      console.error('Nominatim API error:', error);
+      console.error('Geocoding API error:', error);
       return null;
     }
   }
@@ -209,44 +204,15 @@ export class GeoLocationValidationService {
   
   /**
    * Smart location correction using geocoding validation
+   * Temporarily disabled - Twilio functions handle location correction
    */
   static async smartCorrectLocation(
     transcribedText: string,
     fullContext: string
   ): Promise<string> {
-    // Extract potential location from text
-    const locationMatch = transcribedText.match(
-      /(?:in|at|to|from|near|around|inna|deh|a)\s+([A-Z][a-zA-Z\s]+?)(?:,|\.|\s+(?:jamaica|trinidad|barbados|guyana))/i
-    );
-    
-    if (!locationMatch) {
-      return transcribedText;
-    }
-    
-    const potentialLocation = locationMatch[1].trim();
-    
-    // Detect country from context
-    let countryHint = null;
-    if (fullContext.toLowerCase().includes('jamaica')) countryHint = 'Jamaica';
-    else if (fullContext.toLowerCase().includes('trinidad')) countryHint = 'Trinidad and Tobago';
-    else if (fullContext.toLowerCase().includes('barbados')) countryHint = 'Barbados';
-    else if (fullContext.toLowerCase().includes('guyana')) countryHint = 'Guyana';
-    
-    // Validate and correct the location
-    const validated = await this.validateLocation(potentialLocation, countryHint);
-    
-    if (validated && validated.confidence > 0.6) {
-      // Replace with the correct place name
-      const correctedText = transcribedText.replace(
-        potentialLocation,
-        validated.place_name
-      );
-      
-      console.log(`📍 Location validated: "${potentialLocation}" → "${validated.place_name}" (${Math.round(validated.confidence * 100)}% confidence)`);
-      
-      return correctedText;
-    }
-    
+    // Skip location correction in frontend for now
+    // Location correction is handled by Twilio functions during transcription processing
+    console.log(`📍 Skipping frontend location correction - handled by backend`);
     return transcribedText;
   }
 }
