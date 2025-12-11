@@ -1,0 +1,90 @@
+/* 3D Holographic Logo Styles */
+.logo-container {
+  position: relative;
+  display: inline-block;
+  perspective: 1000px;
+}
+
+.logo-3d {
+  width: 100%;
+  height: auto;
+  transform-style: preserve-3d;
+  transition: transform 0.6s ease;
+  filter: drop-shadow(0 0 20px rgba(0, 255, 255, 0.5));
+  animation: float 3s ease-in-out infinite;
+}
+
+.logo-3d:hover {
+  transform: rotateY(15deg) rotateX(5deg) scale(1.05);
+}
+
+/* Holographic effect */
+.logo-holographic {
+  position: relative;
+  overflow: hidden;
+}
+
+.logo-holographic::before {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
+  background: linear-gradient(
+    45deg,
+    transparent 30%,
+    rgba(0, 255, 255, 0.1) 50%,
+    transparent 70%
+  );
+  transform: rotate(45deg);
+  animation: holographic-sweep 3s linear infinite;
+}
+
+.logo-holographic::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 40%,
+    rgba(255, 0, 255, 0.1) 50%,
+    transparent 60%
+  );
+  mix-blend-mode: screen;
+  animation: holographic-sweep 4s linear infinite reverse;
+}
+
+/* Floating animation */
+@keyframes float {
+  0%, 100% {
+    transform: translateY(0) rotateX(0deg);
+  }
+  50% {
+    transform: translateY(-10px) rotateX(5deg);
+  }
+}
+
+/* Holographic sweep animation */
+@keyframes holographic-sweep {
+  0% {
+    transform: translateX(-100%) rotate(45deg);
+  }
+  100% {
+    transform: translateX(100%) rotate(45deg);
+  }
+}
+
+/* Glow effect */
+.logo-glow {
+  filter: 
+    drop-shadow(0 0 10px rgba(0, 255, 255, 0.5))
+    drop-shadow(0 0 20px rgba(0, 255, 255, 0.3))
+    drop-shadow(0 0 30px rgba(0, 255, 255, 0.2));
+}
+
+/* Transparent background */
+.logo-transparent {
+  background: transparent;
+  mix-blend-mode: screen;
+}

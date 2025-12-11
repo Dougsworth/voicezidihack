@@ -1,5 +1,6 @@
 // Transcription Service - Handles HuggingFace API communication
 import { CaribbeanASRService } from './caribbeanASRService'
+import { IntelligentLocationService } from './intelligentLocationService'
 import type { CaribbeanASRResult } from '../types'
 
 export class TranscriptionService {
@@ -59,8 +60,15 @@ export class TranscriptionService {
         
         if (dataLine) {
           const transcription = JSON.parse(dataLine.replace('data: ', ''))[0]
-          console.log('✅ Transcription received:', transcription)
-          return transcription
+          console.log('✅ Raw transcription received:', transcription)
+          
+          // Apply intelligent location enhancement
+          const enhanced = await IntelligentLocationService.enhanceWithAI(text, transcription)
+          if (enhanced !== transcription) {
+            console.log('🤖 AI enhanced transcription:', enhanced)
+          }
+          
+          return enhanced
         }
         
         // Not ready yet - wait then retry
@@ -88,8 +96,14 @@ export class TranscriptionService {
       // Step 3: Get the transcription result
       const transcription = await this.getTranscriptionResult(eventId)
       
-      console.log('✅ Caribbean ASR transcription successful:', transcription)
-      return transcription
+      // Apply intelligent location enhancement
+      const enhanced = await IntelligentLocationService.enhanceWithAI('', transcription)
+      if (enhanced !== transcription) {
+        console.log('🤖 AI enhanced transcription:', enhanced)
+      }
+      
+      console.log('✅ Caribbean ASR transcription successful:', enhanced)
+      return enhanced
       
     } catch (error) {
       console.error('❌ Caribbean ASR transcription failed:', error)
@@ -222,8 +236,15 @@ export class TranscriptionService {
                 const data = JSON.parse(dataStr)
                 if (Array.isArray(data) && data[0]) {
                   result = data[0].trim()
-                  console.log('✅ Successfully parsed transcription:', result)
-                  return result
+                  console.log('✅ Successfully parsed raw transcription:', result)
+                  
+                  // Apply intelligent location enhancement
+                  const enhanced = await IntelligentLocationService.enhanceWithAI('', result)
+                  if (enhanced !== result) {
+                    console.log('🤖 AI enhanced transcription:', enhanced)
+                  }
+                  
+                  return enhanced
                 }
               } catch (parseError) {
                 console.log('Parse error for line:', line, parseError)

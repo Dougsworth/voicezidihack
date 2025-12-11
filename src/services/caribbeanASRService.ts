@@ -1,5 +1,6 @@
 // Caribbean ASR Service - Centralized speech analysis logic
 import type { CaribbeanASRResult } from '../types'
+import { IntelligentLocationService } from './intelligentLocationService'
 
 // Caribbean accent detection patterns
 const CARIBBEAN_ACCENTS = {
@@ -191,19 +192,8 @@ export class CaribbeanASRService {
       }
     }
     
-    // Extract location
-    let location: string | null = null
-    for (const [island, locations] of Object.entries(CARIBBEAN_JOB_TERMS.locations)) {
-      for (const loc of locations) {
-        if (lowerText.includes(loc)) {
-          location = loc.split(' ').map(word => 
-            word.charAt(0).toUpperCase() + word.slice(1)
-          ).join(' ')
-          break
-        }
-      }
-      if (location) break
-    }
+    // Extract location using intelligent service
+    const location = IntelligentLocationService.extractLocation(text) || null
     
     // Determine urgency
     let urgency: 'low' | 'medium' | 'high' = 'medium'
