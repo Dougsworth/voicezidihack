@@ -1,5 +1,7 @@
-import { X, MessageCircle, Clock, Briefcase, Wrench, User } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { X, MessageCircle, Clock, Briefcase, Wrench, User, MapPin, DollarSign, Badge as BadgeIcon, Loader2 } from 'lucide-react'
 import type { VoiceJob } from '@/types'
+import { IntelligentExtractionService, type ExtractedJobDetails } from '@/services/intelligentExtractionService'
 
 interface JobDetailModalProps {
   job: VoiceJob | null
@@ -7,6 +9,40 @@ interface JobDetailModalProps {
 }
 
 export default function JobDetailModal({ job, onClose }: JobDetailModalProps) {
+  const [extractedDetails, setExtractedDetails] = useState<ExtractedJobDetails | null>(null)
+  const [isExtracting, setIsExtracting] = useState(false)
+  
+  // Use pre-extracted details from database or extract on demand if missing
+  useEffect(() => {
+    if (!job) return
+    
+    // Check if we have pre-extracted details in the database
+    if (job.extraction_completed && (job.extracted_location || job.extracted_budget || job.extracted_skill || job.extracted_timing)) {
+      setExtractedDetails({
+        location: job.extracted_location || null,
+        budget: job.extracted_budget || null,
+        skill: job.extracted_skill || null,
+        timing: job.extracted_timing || null,
+        description: job.extracted_description || job.transcription || null
+      })
+      setIsExtracting(false)
+      console.log('✅ Using pre-extracted details from database')
+    } else if (job.transcription) {
+      // Fallback: extract on demand
+      setIsExtracting(true)
+      IntelligentExtractionService.extractJobDetails(job.transcription)
+        .then(details => {
+          setExtractedDetails(details)
+          setIsExtracting(false)
+          console.log('✅ Extracted details on demand')
+        })
+        .catch(error => {
+          console.error('Failed to extract details:', error)
+          setIsExtracting(false)
+        })
+    }
+  }, [job])
+  
   if (!job) return null
 
   const formatDate = (dateString?: string) => {
@@ -93,13 +129,56 @@ export default function JobDetailModal({ job, onClose }: JobDetailModalProps) {
             )}
           </div>
 
-          {/* Contact Info */}
+          {/* Key Details */}
           <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Contact</h3>
-            <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <User className="w-5 h-5 text-gray-400" />
-              <span className="text-gray-700">{formatPhoneNumber(job.caller_phone)}</span>
-            </div>
+            <h3 className="font-semibold text-gray-900 mb-3">Details</h3>
+            
+            {isExtracting ? (
+              <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-xl">
+                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                <span className="text-gray-500 text-sm">Analyzing voice note...</span>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Contact */}
+                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                  <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  <span className="text-gray-700 text-sm">{formatPhoneNumber(job.caller_phone)}</span>
+                </div>
+                
+                {/* Extracted Location */}
+                {extractedDetails?.location && (
+                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
+                    <MapPin className="w-4 h-4 text-red-500 flex-shrink-0" />
+                    <span className="text-gray-700 text-sm">{extractedDetails.location}</span>
+                  </div>
+                )}
+                
+                {/* Extracted Budget */}
+                {extractedDetails?.budget && (
+                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
+                    <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
+                    <span className="text-gray-700 text-sm font-medium">{extractedDetails.budget}</span>
+                  </div>
+                )}
+                
+                {/* Extracted Skill/Service */}
+                {extractedDetails?.skill && (
+                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
+                    <BadgeIcon className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                    <span className="text-gray-700 text-sm font-medium">{extractedDetails.skill}</span>
+                  </div>
+                )}
+                
+                {/* Extracted Timing */}
+                {extractedDetails?.timing && (
+                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
+                    <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
+                    <span className="text-gray-700 text-sm">{extractedDetails.timing}</span>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Recording Info */}

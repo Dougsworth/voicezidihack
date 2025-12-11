@@ -44,6 +44,13 @@ export interface VoiceJob {
   transcription?: string
   processed_at?: string
   gig_type?: 'job_posting' | 'work_request'
+  // GPT extracted fields
+  extracted_location?: string | null
+  extracted_budget?: string | null
+  extracted_skill?: string | null
+  extracted_timing?: string | null
+  extracted_description?: string | null
+  extraction_completed?: boolean
 }
 
 // Legacy VoiceGig interface (keeping for compatibility)

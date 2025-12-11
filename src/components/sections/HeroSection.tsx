@@ -1,6 +1,12 @@
 import { ArrowRight, Phone } from "lucide-react";
 import VoiceRecorder from "@/components/voice/VoiceRecorder";
 import TranscriptionLoader from "@/components/voice/TranscriptionLoader";
+import { 
+  AnimatedMicrophone,
+  AnimatedPhone, 
+  AnimatedWork,
+  AnimatedGlobal
+} from "@/components/animations/ProfessionalIcons";
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { TranscriptionService } from "@/services/transcriptionService";
@@ -89,17 +95,32 @@ const HeroSection = () => {
       setTranscription(text)
       setProcessingStage('analyzing')
       
-      // Determine job type from transcription
-      const isWorkRequest = text.toLowerCase().includes('looking for work') || 
-                           text.toLowerCase().includes('available for') ||
-                           text.toLowerCase().includes('i can') ||
-                           text.toLowerCase().includes('my skills')
+      // Determine job type from transcription using same logic as Twilio functions
+      const lower = text.toLowerCase();
       
-      const gigType = isWorkRequest ? 'work_request' : 'job_posting'
+      // Patterns for people SEEKING work (work_request)
+      const seeking = /\b(i|me)\s+(need|want|looking\s+for|am\s+looking\s+for)\s+(a\s+)?(job|work|employment)|available\s+(for\s+)?(work|job)|i\s+(can|do|offer)|my\s+skills|experienced\s+(in|at|with)/i;
       
-      // Save to voice_jobs table with user's phone number
-      await VoiceJobsService.createFromFrontend(text, gigType, userPhone || undefined)
-      console.log('✅ Saved to voice_jobs with phone:', userPhone)
+      // Patterns for people HIRING (job_posting) 
+      const hiring = /\b(need|want|looking\s+for)\s+(a|an|some|someone|somebody)\s+\w+\s+(to|for|who\s+can)|someone\s+(to|must|should)\s+\w+|fix\s+my|paint\s+my|clean\s+my|repair\s+my/i;
+      
+      let seekingScore = 0;
+      let hiringScore = 0;
+      
+      if (seeking.test(lower)) seekingScore += 2;
+      if (hiring.test(lower)) hiringScore += 2;
+      
+      const gigType = seekingScore > hiringScore ? 'work_request' : 'job_posting'
+      console.log(`🎯 Categorization: seeking=${seekingScore}, hiring=${hiringScore} → ${gigType}`)
+      
+      // Extract job details with GPT
+      console.log('🤖 Extracting job details with GPT...')
+      const extractedDetails = await VoiceJobsService.extractJobDetailsWithGPT(text)
+      console.log('✅ Extracted details:', extractedDetails)
+      
+      // Save to voice_jobs table with user's phone number and extracted details
+      await VoiceJobsService.createFromFrontendWithDetails(text, gigType, extractedDetails, userPhone || undefined)
+      console.log('✅ Saved to voice_jobs with phone and details:', userPhone)
       
       setProcessingStage('complete')
       setShowSuccess(true)
@@ -132,6 +153,29 @@ const HeroSection = () => {
 
   return (
     <section className="relative min-h-[90vh] flex items-center pt-20 bg-white overflow-hidden">
+      {/* Professional animated background elements */}
+      <div className="absolute inset-0 pointer-events-none">
+        {/* Top left - global/location */}
+        <div className="absolute top-24 left-16 hidden md:block">
+          <AnimatedGlobal size={40} opacity={0.1} />
+        </div>
+        
+        {/* Top right - microphone */}
+        <div className="absolute top-24 right-16 hidden md:block">
+          <AnimatedMicrophone size={40} opacity={0.1} />
+        </div>
+        
+        {/* Bottom left - work/briefcase */}
+        <div className="absolute bottom-36 left-16 hidden md:block">
+          <AnimatedWork size={40} opacity={0.1} />
+        </div>
+        
+        {/* Bottom right - phone */}
+        <div className="absolute bottom-36 right-16 hidden md:block">
+          <AnimatedPhone size={40} opacity={0.1} />
+        </div>
+      </div>
+      
       <div className="container relative z-10">
         <div className="max-w-3xl mx-auto text-center">
           {/* Caribbean Flags */}
@@ -163,7 +207,8 @@ const HeroSection = () => {
           </p>
 
           {/* Voice Recorder */}
-          <div className="mb-12">
+          <div className="mb-12 relative">
+            
             {isProcessing ? (
               <TranscriptionLoader 
                 isLoading={true}
@@ -242,8 +287,8 @@ const HeroSection = () => {
 
           {/* Options */}
           <div className="grid md:grid-cols-2 gap-6 max-w-2xl mx-auto mb-12">
-            <Link to="/hire-workers" className="group">
-              <div className="bg-white p-8 rounded-lg transition-all shadow-sm hover:shadow-md border" style={{ 
+            <Link to="/hire-workers" className="group block">
+              <div className="bg-white p-8 rounded-lg transition-all shadow-sm hover:shadow-md border h-full min-h-[180px] flex flex-col" style={{ 
                 borderColor: CARIBBEAN_COLORS.primary[200]
               }} onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.primary[50]
@@ -260,12 +305,12 @@ const HeroSection = () => {
                   </div>
                   <h3 className="font-bold text-lg" style={{ color: CARIBBEAN_COLORS.primary[800] }}>Need Work Done?</h3>
                 </div>
-                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.primary[600] }}>Connect with skilled Caribbean professionals</p>
+                <p className="text-sm mb-4 flex-grow" style={{ color: CARIBBEAN_COLORS.primary[600] }}>Connect with skilled Caribbean professionals</p>
                 <p className="text-sm font-medium" style={{ color: CARIBBEAN_COLORS.primary[500] }}>Browse workers →</p>
               </div>
             </Link>
-            <Link to="/find-work" className="group">
-              <div className="bg-white p-8 rounded-lg transition-all shadow-sm hover:shadow-md border" style={{ 
+            <Link to="/find-work" className="group block">
+              <div className="bg-white p-8 rounded-lg transition-all shadow-sm hover:shadow-md border h-full min-h-[180px] flex flex-col" style={{ 
                 borderColor: CARIBBEAN_COLORS.secondary[200]
               }} onMouseEnter={(e) => {
                 e.currentTarget.style.backgroundColor = CARIBBEAN_COLORS.secondary[50]
@@ -282,7 +327,7 @@ const HeroSection = () => {
                   </div>
                   <h3 className="font-bold text-lg" style={{ color: CARIBBEAN_COLORS.secondary[800] }}>Looking for Work?</h3>
                 </div>
-                <p className="text-sm mb-4" style={{ color: CARIBBEAN_COLORS.secondary[600] }}>Find opportunities that match your skills</p>
+                <p className="text-sm mb-4 flex-grow" style={{ color: CARIBBEAN_COLORS.secondary[600] }}>Find opportunities that match your skills</p>
                 <p className="text-sm font-medium" style={{ color: CARIBBEAN_COLORS.secondary[500] }}>Browse jobs →</p>
               </div>
             </Link>

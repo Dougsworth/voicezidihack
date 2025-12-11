@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { VoiceJobsService } from '@/services'
 import type { VoiceJob } from '@/types'
-import { Clock, ArrowLeft, Shield, Wrench, Phone, RefreshCw } from 'lucide-react'
+import { ArrowLeft, Shield, Wrench } from 'lucide-react'
 import { Header } from '@/components'
 import JobDetailModal from '@/components/JobDetailModal'
+import { SimpleJobCard } from '@/components/cards/SimpleJobCard'
 
 export default function HireWorkers() {
   const [workers, setWorkers] = useState<VoiceJob[]>([])
@@ -110,52 +111,14 @@ export default function HireWorkers() {
           </div>
 
           {/* Workers Grid */}
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 max-w-6xl mx-auto">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 max-w-7xl mx-auto">
             {workers.map((worker) => (
-              <div 
-                key={worker.id} 
+              <SimpleJobCard
+                key={worker.id}
+                job={worker}
                 onClick={() => setSelectedJob(worker)}
-                className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-md hover:border-green-300 transition-all cursor-pointer"
-              >
-                {/* Header */}
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2">
-                    <Wrench className="w-4 h-4 text-green-600" />
-                    <span className="text-xs text-gray-500">{formatTimeAgo(worker.created_at)}</span>
-                  </div>
-                  <span className={`px-2 py-0.5 rounded text-xs font-medium ${
-                    worker.status === 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'
-                  }`}>
-                    {worker.status === 'completed' ? '✓' : '⏳'}
-                  </span>
-                </div>
-
-                {/* Transcription */}
-                {worker.transcription ? (
-                  <p className="text-gray-700 text-sm mb-3 line-clamp-3">"{worker.transcription}"</p>
-                ) : (
-                  <div className="mb-3">
-                    <p className="text-gray-400 text-sm italic mb-1">Transcription pending...</p>
-                    <button
-                      onClick={(e) => worker.id && transcribeSingle(e, worker.id)}
-                      disabled={transcribing}
-                      className="text-xs text-teal-600 hover:text-teal-700 flex items-center gap-1"
-                    >
-                      <RefreshCw className={`w-3 h-3 ${transcribing ? 'animate-spin' : ''}`} />
-                      {transcribing ? 'Transcribing...' : 'Transcribe'}
-                    </button>
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div className="flex items-center justify-between pt-2 border-t border-gray-100">
-                  <div className="flex items-center gap-1 text-xs text-gray-500">
-                    <Phone className="w-3 h-3" />
-                    <span>{formatPhoneNumber(worker.caller_phone)}</span>
-                  </div>
-                  <span className="text-xs text-green-600 font-medium">View details →</span>
-                </div>
-              </div>
+                type="work_request"
+              />
             ))}
           </div>
 

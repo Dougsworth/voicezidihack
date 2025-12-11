@@ -3,6 +3,7 @@ import { supabase } from '../lib/supabase'
 import type { VoiceJob } from '../types'
 import { TranscriptionService } from './transcriptionService'
 import { JobCategorizationService, type JobCategory } from './jobCategorizationService'
+import { IntelligentExtractionService, type ExtractedJobDetails } from './intelligentExtractionService'
 
 export class VoiceJobsService {
   static async getVoiceJobs(filters?: { gigType?: 'job_posting' | 'work_request' }): Promise<VoiceJob[]> {
@@ -437,6 +438,60 @@ export class VoiceJobsService {
       
     } catch (error) {
       console.error('Error in batch categorization:', error)
+    }
+  }
+
+  /**
+   * Extract job details using GPT
+   */
+  static async extractJobDetailsWithGPT(transcription: string): Promise<ExtractedJobDetails> {
+    return await IntelligentExtractionService.extractJobDetails(transcription)
+  }
+
+  /**
+   * Create voice job from frontend with extracted details
+   */
+  static async createFromFrontendWithDetails(
+    transcription: string,
+    gigType: 'job_posting' | 'work_request',
+    extractedDetails: ExtractedJobDetails,
+    callerPhone?: string
+  ): Promise<VoiceJob | null> {
+    try {
+      const recordingSid = `web_${Date.now()}`
+      
+      const { data, error } = await supabase
+        .from('voice_jobs')
+        .insert({
+          caller_phone: callerPhone || 'web_user',
+          recording_sid: recordingSid,
+          recording_url: '',
+          gradio_event_id: recordingSid,
+          transcription,
+          gig_type: gigType,
+          status: 'completed',
+          // Add extracted details
+          extracted_location: extractedDetails.location,
+          extracted_budget: extractedDetails.budget,
+          extracted_skill: extractedDetails.skill,
+          extracted_timing: extractedDetails.timing,
+          extracted_description: extractedDetails.description,
+          extraction_completed: true
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error('Error creating voice job:', error)
+        throw error
+      }
+
+      console.log('✅ Voice job created with extracted details:', data)
+      return data as VoiceJob
+
+    } catch (error) {
+      console.error('Error creating voice job with details:', error)
+      throw error
     }
   }
 }

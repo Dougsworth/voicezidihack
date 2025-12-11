@@ -224,6 +224,59 @@ app.get('/api/geocode', async (req, res) => {
   }
 });
 
+// Job details extraction endpoint
+app.post('/api/extract-job-details', async (req, res) => {
+  try {
+    const { transcription } = req.body;
+    
+    if (!transcription) {
+      return res.status(400).json({ success: false, error: 'Transcription required' });
+    }
+
+    const response = await openai.chat.completions.create({
+      model: 'gpt-3.5-turbo',
+      messages: [{
+        role: 'user',
+        content: `Extract job details from this Jamaican voice transcription: "${transcription}"
+
+Return ONLY a JSON object with these exact fields:
+{
+  "location": "specific place in Jamaica mentioned (or null)",
+  "budget": "money amount with currency (or null)", 
+  "skill": "type of work/service (or null)",
+  "timing": "when work should be done (or null)",
+  "description": "clean summary of the request"
+}
+
+Be conservative - only extract if clearly stated. Use null for unclear items.`
+      }],
+      temperature: 0.1,
+      max_tokens: 200
+    });
+    
+    const content = response.choices[0]?.message?.content;
+    if (!content) throw new Error('No response from GPT');
+    
+    const parsed = JSON.parse(content);
+    const details = {
+      location: parsed.location,
+      budget: parsed.budget,
+      skill: parsed.skill,
+      timing: parsed.timing,
+      description: parsed.description || transcription
+    };
+    
+    res.json(details);
+  } catch (error) {
+    console.error('Job details extraction error:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to extract job details',
+      details: error.message 
+    });
+  }
+});
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => {
   console.log(`Voice Gig Connect API running on port ${PORT}`);
