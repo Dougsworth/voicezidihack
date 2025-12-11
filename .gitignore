@@ -26,3 +26,7 @@ dist-ssr
 # Files with API keys
 twilio-webhook-with-gpt.js
 test-openai.js
+
+# Environment files
+.env.local
+.env
