@@ -124,13 +124,18 @@ export class IntelligentExtractionService {
             role: 'user',
             content: `Extract job details from this Jamaican voice transcription: "${transcription}"
 
+IMPORTANT CARIBBEAN CONTEXT:
+- "promo" = "someone" (Jamaican term)
+- "I need a promo to fix..." = "I need someone to fix..."
+- Preserve authentic Caribbean job terms and locations
+
 Return ONLY a JSON object with these exact fields:
 {
   "location": "specific place in Jamaica mentioned (or null)",
   "budget": "money amount with currency (or null)", 
   "skill": "type of work/service (or null)",
   "timing": "when work should be done (or null)",
-  "description": "clean summary of the request"
+  "description": "clean summary preserving Caribbean terms"
 }
 
 Be conservative - only extract if clearly stated. Use null for unclear items.`

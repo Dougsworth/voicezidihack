@@ -38,12 +38,20 @@ export default function VoiceNoteCard({ gig, matchScore, currentGig, onContact }
     const date = new Date(dateString)
     const now = new Date()
     const diff = now.getTime() - date.getTime()
-    const hours = Math.floor(diff / (1000 * 60 * 60))
+    const seconds = Math.floor(diff / 1000)
+    const minutes = Math.floor(seconds / 60)
+    const hours = Math.floor(minutes / 60)
     const days = Math.floor(hours / 24)
     
-    if (days > 0) return `${days}d ago`
-    if (hours > 0) return `${hours}h ago`
-    return 'Just now'
+    // For very recent posts, show exact time
+    if (seconds < 30) return 'Just now'
+    if (seconds < 60) return `${seconds}s ago`
+    if (minutes < 60) return `${minutes}m ago`
+    if (hours < 24) return `${hours}h ago`
+    if (days < 7) return `${days}d ago`
+    
+    // For older posts, show the actual date/time
+    return date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   }
 
   return (

@@ -1,6 +1,7 @@
 // Caribbean ASR Service - Centralized speech analysis logic
 import type { CaribbeanASRResult } from '../types'
 import { IntelligentLocationService } from './intelligentLocationService'
+import { PatoisCleaningService } from './patoisCleaningService'
 
 // Caribbean accent detection patterns
 const CARIBBEAN_ACCENTS = {
@@ -65,25 +66,54 @@ const CARIBBEAN_JOB_TERMS = {
 
 export class CaribbeanASRService {
   static async analyzeSpeech(transcription: string): Promise<CaribbeanASRResult> {
-    const text = transcription.toLowerCase()
+    // First, clean the transcription using PatoisCleaningService
+    const patoisResult = PatoisCleaningService.cleanWithConfidence(transcription)
+    const cleanedText = patoisResult.cleaned
     
     // Detect accent
-    const accent = this.detectAccent(transcription)
+    const accent = this.detectAccent(cleanedText)
+    
+    // Boost accent confidence if Patois was detected
+    if (patoisResult.isPatois) {
+      accent.detected.push('jamaican_patois')
+      accent.confidence = Math.max(accent.confidence, 0.7)
+      if (accent.primary === 'general_caribbean') {
+        accent.primary = 'jamaican'
+      }
+    }
     
     // Analyze speech patterns
-    const speechPatterns = this.analyzeSpeechPatterns(transcription)
+    const speechPatterns = this.analyzeSpeechPatterns(cleanedText)
     
     // Extract job information with Caribbean context
-    const jobExtraction = this.extractJobInfoCaribbean(transcription)
+    const jobExtraction = this.extractJobInfoCaribbean(cleanedText)
+    
+    // Merge skills from Patois cleaning with our extraction
+    if (patoisResult.extractedSkills.length > 0) {
+      const combinedSkills = [...new Set([...jobExtraction.skills, ...patoisResult.extractedSkills])]
+      jobExtraction.skills = combinedSkills
+    }
     
     // Find Caribbean-specific context
-    const caribbeanContext = this.findCaribbeanContext(transcription)
+    const caribbeanContext = this.findCaribbeanContext(cleanedText)
+    
+    // Add detected Patois terms to local terms
+    if (patoisResult.detectedTerms.length > 0) {
+      caribbeanContext.localTerms = [
+        ...new Set([...caribbeanContext.localTerms, ...patoisResult.detectedTerms])
+      ]
+    }
     
     // Calculate overall confidence based on Caribbean model understanding
-    const confidence = this.calculateCaribbeanConfidence(transcription, accent, jobExtraction)
+    let confidence = this.calculateCaribbeanConfidence(cleanedText, accent, jobExtraction)
+    
+    // Boost confidence if Patois was successfully detected and cleaned
+    if (patoisResult.isPatois && patoisResult.confidence > 0.6) {
+      confidence = Math.min(confidence + 0.1, 0.95)
+    }
 
     return {
-      transcription,
+      transcription: cleanedText, // Return the cleaned version
       confidence,
       accent,
       speechPatterns,

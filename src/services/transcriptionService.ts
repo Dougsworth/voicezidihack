@@ -1,6 +1,7 @@
 // Transcription Service - Handles HuggingFace API communication
 import { CaribbeanASRService } from './caribbeanASRService'
 import { IntelligentLocationService } from './intelligentLocationService'
+import { PatoisCleaningService } from './patoisCleaningService'
 import type { CaribbeanASRResult } from '../types'
 
 export class TranscriptionService {
@@ -62,9 +63,16 @@ export class TranscriptionService {
           const transcription = JSON.parse(dataLine.replace('data: ', ''))[0]
           console.log('✅ Raw transcription received:', transcription)
           
-          // Apply intelligent location enhancement
-          const enhanced = await IntelligentLocationService.enhanceWithAI(text, transcription)
-          if (enhanced !== transcription) {
+          // Step 1: Apply Patois cleaning
+          const patoisResult = PatoisCleaningService.cleanWithConfidence(transcription)
+          if (patoisResult.isPatois) {
+            console.log('🇯🇲 Patois detected and cleaned:', patoisResult.cleaned)
+          }
+          const cleanedResult = patoisResult.cleaned
+          
+          // Step 2: Apply intelligent location enhancement
+          const enhanced = await IntelligentLocationService.enhanceWithAI(text, cleanedResult)
+          if (enhanced !== cleanedResult) {
             console.log('🤖 AI enhanced transcription:', enhanced)
           }
           
@@ -93,17 +101,11 @@ export class TranscriptionService {
       // Step 2: Start transcription job
       const eventId = await this.startTranscriptionJob(filePath)
       
-      // Step 3: Get the transcription result
+      // Step 3: Get the transcription result (already cleaned by getTranscriptionResult)
       const transcription = await this.getTranscriptionResult(eventId)
       
-      // Apply intelligent location enhancement
-      const enhanced = await IntelligentLocationService.enhanceWithAI('', transcription)
-      if (enhanced !== transcription) {
-        console.log('🤖 AI enhanced transcription:', enhanced)
-      }
-      
-      console.log('✅ Caribbean ASR transcription successful:', enhanced)
-      return enhanced
+      console.log('✅ Caribbean ASR transcription successful:', transcription)
+      return transcription
       
     } catch (error) {
       console.error('❌ Caribbean ASR transcription failed:', error)
@@ -238,9 +240,24 @@ export class TranscriptionService {
                   result = data[0].trim()
                   console.log('✅ Successfully parsed raw transcription:', result)
                   
-                  // Apply intelligent location enhancement
-                  const enhanced = await IntelligentLocationService.enhanceWithAI('', result)
-                  if (enhanced !== result) {
+                  // Step 1: Apply Patois cleaning/correction
+                  const patoisResult = PatoisCleaningService.cleanWithConfidence(result)
+                  if (patoisResult.isPatois) {
+                    console.log('🇯🇲 Patois detected! Cleaning applied:')
+                    console.log('   Original:', patoisResult.original)
+                    console.log('   Cleaned:', patoisResult.cleaned)
+                    console.log('   English:', patoisResult.english)
+                    console.log('   Confidence:', patoisResult.confidence)
+                    console.log('   Terms found:', patoisResult.detectedTerms)
+                    console.log('   Skills extracted:', patoisResult.extractedSkills)
+                  }
+                  
+                  // Use the cleaned version, but keep English available for matching
+                  const cleanedResult = patoisResult.cleaned
+                  
+                  // Step 2: Apply intelligent location enhancement
+                  const enhanced = await IntelligentLocationService.enhanceWithAI('', cleanedResult)
+                  if (enhanced !== cleanedResult) {
                     console.log('🤖 AI enhanced transcription:', enhanced)
                   }
                   

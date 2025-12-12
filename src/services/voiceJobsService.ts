@@ -1,9 +1,11 @@
-// Voice Jobs Service - for Twilio voice_jobs table
+// Voice Jobs Service - Enhanced with AI Skill Taxonomy and Intelligent Matching
 import { supabase } from '../lib/supabase'
 import type { VoiceJob } from '../types'
 import { TranscriptionService } from './transcriptionService'
 import { JobCategorizationService, type JobCategory } from './jobCategorizationService'
 import { IntelligentExtractionService, type ExtractedJobDetails } from './intelligentExtractionService'
+import SkillTaxonomyService, { type ExtractedSkillProfile } from './skillTaxonomyService'
+import IntelligentMatchingService, { type JobMatch, type MatchingProfile } from './intelligentMatchingService'
 
 export class VoiceJobsService {
   static async getVoiceJobs(filters?: { gigType?: 'job_posting' | 'work_request' }): Promise<VoiceJob[]> {
@@ -492,6 +494,163 @@ export class VoiceJobsService {
     } catch (error) {
       console.error('Error creating voice job with details:', error)
       throw error
+    }
+  }
+
+  // ===== NEW AI-ENHANCED METHODS =====
+
+  /**
+   * Extract skills from a voice job using Caribbean-specific skill taxonomy
+   */
+  static async extractSkillProfile(voiceJob: VoiceJob): Promise<ExtractedSkillProfile | null> {
+    if (!voiceJob.transcription) {
+      console.warn('No transcription available for skill extraction');
+      return null;
+    }
+
+    try {
+      const skillService = SkillTaxonomyService.getInstance();
+      const skillProfile = await skillService.extractSkills(voiceJob.transcription, true);
+      
+      console.log('✅ Extracted skill profile:', skillProfile);
+      return skillProfile;
+    } catch (error) {
+      console.error('❌ Error extracting skills:', error);
+      return null;
+    }
+  }
+
+  /**
+   * Create matching profile and find intelligent matches
+   */
+  static async findIntelligentMatches(voiceJobId: string, maxResults: number = 10): Promise<JobMatch[]> {
+    try {
+      const voiceJob = await this.getVoiceJobById(voiceJobId);
+      if (!voiceJob) {
+        console.error('Voice job not found for matching');
+        return [];
+      }
+
+      const matchingService = IntelligentMatchingService.getInstance();
+      
+      // Create matching profile
+      const profile = await matchingService.createMatchingProfile(voiceJob);
+      console.log('✅ Created matching profile:', profile.id);
+      
+      // Find matches
+      const matches = await matchingService.findMatches(profile, maxResults);
+      console.log(`✅ Found ${matches.length} intelligent matches`);
+      
+      return matches;
+    } catch (error) {
+      console.error('❌ Error finding intelligent matches:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Enhanced job creation with GPT details, skills, and AI matching
+   */
+  static async createFromFrontendWithFullAI(
+    transcription: string, 
+    gigType: 'job_posting' | 'work_request',
+    callerPhone?: string,
+    findMatches: boolean = true
+  ): Promise<{ 
+    voiceJob: VoiceJob | null; 
+    extractedDetails?: ExtractedJobDetails;
+    skillProfile?: ExtractedSkillProfile;
+    matches?: JobMatch[];
+  }> {
+    try {
+      // First extract details with GPT (existing functionality)
+      const extractedDetails = await IntelligentExtractionService.extractJobDetails(transcription);
+      
+      // Create the voice job with extracted details
+      const voiceJob = await this.createFromFrontendWithDetails(
+        transcription, 
+        gigType, 
+        extractedDetails, 
+        callerPhone
+      );
+
+      if (!voiceJob) {
+        return { voiceJob: null };
+      }
+
+      const result: any = { voiceJob, extractedDetails };
+
+      // Extract skill profile using new AI system
+      result.skillProfile = await this.extractSkillProfile(voiceJob);
+
+      // Find intelligent matches
+      if (findMatches && voiceJob.id) {
+        result.matches = await this.findIntelligentMatches(voiceJob.id);
+        
+        // Log potential matches for the user
+        if (result.matches.length > 0) {
+          console.log(`🎯 Found ${result.matches.length} potential matches:`);
+          result.matches.slice(0, 3).forEach((match, i) => {
+            console.log(`${i + 1}. Score: ${(match.matchScore * 100).toFixed(1)}% - ${match.matchReasons.join(', ')}`);
+          });
+        }
+      }
+
+      console.log('✅ Created comprehensive AI-enhanced job:', {
+        id: voiceJob.id,
+        type: gigType,
+        skills: result.skillProfile?.primarySkills?.length || 0,
+        matches: result.matches?.length || 0
+      });
+
+      return result;
+    } catch (error) {
+      console.error('❌ Error creating AI-enhanced job from frontend:', error);
+      return { voiceJob: null };
+    }
+  }
+
+  /**
+   * Get skill insights for analytics dashboard
+   */
+  static async getSkillInsights(): Promise<{
+    topSkills: string[];
+    skillDemand: { skill: string; demand: string; count: number }[];
+    skillCombinations: string[];
+    marketAnalysis: any;
+  }> {
+    try {
+      const skillService = SkillTaxonomyService.getInstance();
+      const matchingService = IntelligentMatchingService.getInstance();
+      
+      // Get high-demand skills
+      const highDemandSkills = skillService.getHighDemandSkills();
+      const topSkills = highDemandSkills.slice(0, 10).map(skill => skill.name);
+      
+      // Get skill demand analysis
+      const skillDemand = highDemandSkills.map(skill => ({
+        skill: skill.name,
+        demand: skill.marketDemand,
+        count: 0 // Would be calculated from actual job data
+      }));
+      
+      // Get insights from matching service
+      const matchingInsights = matchingService.getMatchingInsights();
+      
+      return {
+        topSkills,
+        skillDemand,
+        skillCombinations: matchingInsights.successfulMatchPatterns,
+        marketAnalysis: matchingInsights
+      };
+    } catch (error) {
+      console.error('❌ Error getting skill insights:', error);
+      return {
+        topSkills: [],
+        skillDemand: [],
+        skillCombinations: [],
+        marketAnalysis: null
+      };
     }
   }
 }

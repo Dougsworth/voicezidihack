@@ -34,10 +34,10 @@ export default function TranscriptionLoader({
           targetProgress = Math.min(20, elapsed * 10)
           break
         case 'transcribing':
-          targetProgress = 20 + Math.min(60, elapsed * 8)
+          targetProgress = 20 + Math.min(50, elapsed * 8)
           break
         case 'analyzing':
-          targetProgress = 80 + Math.min(15, elapsed * 15)
+          targetProgress = 70 + Math.min(25, elapsed * 12)
           break
         case 'complete':
           targetProgress = 100
@@ -70,8 +70,8 @@ export default function TranscriptionLoader({
         }
       case 'analyzing':
         return {
-          icon: <Loader2 className="w-5 h-5 animate-spin" />,
-          text: 'Analyzing speech patterns...',
+          icon: <Brain className="w-5 h-5 animate-pulse" />,
+          text: 'AI analyzing and extracting details...',
           color: 'text-green-600',
           bgColor: 'bg-green-50'
         }
