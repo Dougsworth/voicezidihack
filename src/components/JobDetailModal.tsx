@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { X, MessageCircle, Clock, Briefcase, Wrench, User, MapPin, DollarSign, Badge as BadgeIcon, Loader2 } from 'lucide-react'
+import { X, MessageCircle, Clock, MapPin, DollarSign, Phone, Calendar, User } from 'lucide-react'
 import type { VoiceJob } from '@/types'
 import { IntelligentExtractionService, type ExtractedJobDetails } from '@/services/intelligentExtractionService'
 
@@ -53,7 +53,8 @@ export default function JobDetailModal({ job, onClose }: JobDetailModalProps) {
       month: 'short',
       day: 'numeric',
       hour: 'numeric',
-      minute: '2-digit'
+      minute: '2-digit',
+      hour12: true
     })
   }
 
@@ -78,142 +79,154 @@ export default function JobDetailModal({ job, onClose }: JobDetailModalProps) {
       />
       
       {/* Modal */}
-      <div className="relative bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+      <div className="relative bg-white rounded-lg shadow-xl max-w-lg w-full max-h-[90vh] overflow-hidden">
         {/* Header */}
-        <div className={`p-6 ${isWorker ? 'bg-green-50' : 'bg-blue-50'} rounded-t-2xl`}>
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full bg-white/80 hover:bg-white transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-600" />
-          </button>
-          
-          <div className="flex items-center gap-3 mb-4">
-            <div className={`p-3 rounded-xl ${isWorker ? 'bg-green-100' : 'bg-blue-100'}`}>
-              {isWorker ? (
-                <Wrench className={`w-6 h-6 ${isWorker ? 'text-green-600' : 'text-blue-600'}`} />
-              ) : (
-                <Briefcase className={`w-6 h-6 ${isWorker ? 'text-green-600' : 'text-blue-600'}`} />
-              )}
-            </div>
-            <div>
-              <span className={`text-sm font-medium ${isWorker ? 'text-green-700' : 'text-blue-700'}`}>
-                {isWorker ? '👷 Worker Available' : '🔍 Job Posting'}
-              </span>
-              <div className="flex items-center gap-2 text-gray-500 text-sm mt-1">
-                <Clock className="w-4 h-4" />
-                {formatDate(job.created_at)}
-              </div>
-            </div>
+        <div className="border-b border-gray-200 px-6 py-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-gray-900">
+              {isWorker ? 'Worker Available' : 'Job Posting'}
+            </h2>
+            <button 
+              onClick={onClose}
+              className="p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
           
-          {/* Status Badge */}
-          <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
-            job.status === 'completed' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-          }`}>
-            {job.status === 'completed' ? '✓ Transcribed' : '⏳ Processing'}
-          </span>
+          <div className="flex items-center gap-2 mt-2 text-sm text-gray-500">
+            <Clock className="w-4 h-4" />
+            <span>{formatDate(job.created_at)}</span>
+          </div>
+          
+          {job.status === 'completed' && (
+            <div className="mt-3 inline-flex items-center gap-1.5 text-xs text-green-700 bg-green-50 px-2.5 py-1 rounded-md">
+              <div className="w-1.5 h-1.5 bg-green-600 rounded-full" />
+              Transcribed
+            </div>
+          )}
         </div>
 
         {/* Content */}
-        <div className="p-6">
-          {/* Transcription */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-2">Voice Note</h3>
-            {job.transcription ? (
-              <div className="bg-gray-50 rounded-xl p-4">
-                <p className="text-gray-700 leading-relaxed">"{job.transcription}"</p>
-              </div>
-            ) : (
-              <p className="text-gray-400 italic">Transcription pending...</p>
-            )}
-          </div>
+        <div className="overflow-y-auto" style={{ maxHeight: 'calc(90vh - 100px)' }}>
+          <div className="p-6">
+            {/* Voice Note Section */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Voice Note</h3>
+              {job.transcription ? (
+                <div className="bg-gray-50 border border-gray-200 rounded-md p-4">
+                  <p className="text-gray-900 leading-relaxed">{job.transcription}</p>
+                </div>
+              ) : (
+                <p className="text-gray-400 italic">Transcription pending...</p>
+              )}
+            </div>
 
-          {/* Key Details */}
-          <div className="mb-6">
-            <h3 className="font-semibold text-gray-900 mb-3">Details</h3>
-            
-            {isExtracting ? (
-              <div className="flex items-center gap-2 p-4 bg-gray-50 rounded-xl">
-                <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                <span className="text-gray-500 text-sm">Analyzing voice note...</span>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {/* Contact */}
-                <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-                  <User className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                  <span className="text-gray-700 text-sm">{formatPhoneNumber(job.caller_phone)}</span>
+            {/* Details Section */}
+            <div className="mb-6">
+              <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Details</h3>
+              
+              <div className="space-y-2">
+                {/* Contact Method */}
+                <div className="flex items-start gap-3">
+                  <User className="w-5 h-5 text-gray-400 mt-0.5" />
+                  <div className="flex-1">
+                    <p className="text-sm text-gray-600">Posted via</p>
+                    <p className="text-sm font-medium text-gray-900">{job.caller_phone === 'web_user' ? 'Web' : 'Phone'}</p>
+                  </div>
                 </div>
                 
-                {/* Extracted Location */}
+                {/* Location */}
                 {extractedDetails?.location && (
-                  <div className="flex items-center gap-3 p-3 bg-red-50 rounded-xl">
-                    <MapPin className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm">{extractedDetails.location}</span>
+                  <div className="flex items-start gap-3">
+                    <MapPin className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">Location</p>
+                      <p className="text-sm font-medium text-gray-900">{extractedDetails.location}</p>
+                    </div>
                   </div>
                 )}
                 
-                {/* Extracted Budget */}
+                {/* Budget */}
                 {extractedDetails?.budget && (
-                  <div className="flex items-center gap-3 p-3 bg-green-50 rounded-xl">
-                    <DollarSign className="w-4 h-4 text-green-500 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm font-medium">{extractedDetails.budget}</span>
+                  <div className="flex items-start gap-3">
+                    <DollarSign className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">Budget</p>
+                      <p className="text-sm font-medium text-gray-900">{extractedDetails.budget}</p>
+                    </div>
                   </div>
                 )}
                 
-                {/* Extracted Skill/Service */}
+                {/* Service Type */}
                 {extractedDetails?.skill && (
-                  <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-xl">
-                    <BadgeIcon className="w-4 h-4 text-purple-500 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm font-medium">{extractedDetails.skill}</span>
+                  <div className="flex items-start gap-3">
+                    <div className="w-5 h-5 text-gray-400 mt-0.5 flex items-center justify-center">
+                      <div className="w-1.5 h-1.5 bg-gray-400 rounded-full" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">Service</p>
+                      <p className="text-sm font-medium text-gray-900">{extractedDetails.skill}</p>
+                    </div>
                   </div>
                 )}
                 
-                {/* Extracted Timing */}
+                {/* Timing */}
                 {extractedDetails?.timing && (
-                  <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-xl">
-                    <Clock className="w-4 h-4 text-blue-500 flex-shrink-0" />
-                    <span className="text-gray-700 text-sm">{extractedDetails.timing}</span>
+                  <div className="flex items-start gap-3">
+                    <Calendar className="w-5 h-5 text-gray-400 mt-0.5" />
+                    <div className="flex-1">
+                      <p className="text-sm text-gray-600">When</p>
+                      <p className="text-sm font-medium text-gray-900">{extractedDetails.timing}</p>
+                    </div>
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* Recording ID */}
+            {job.recording_sid && (
+              <div className="mb-6">
+                <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wider mb-3">Recording ID</h3>
+                <p className="text-xs font-mono text-gray-500 break-all">
+                  {job.recording_sid}
+                </p>
+              </div>
             )}
           </div>
+        </div>
 
-          {/* Recording Info */}
-          {job.recording_sid && (
-            <div className="mb-6">
-              <h3 className="font-semibold text-gray-900 mb-2">Recording ID</h3>
-              <p className="text-gray-500 text-sm font-mono bg-gray-50 p-3 rounded-xl truncate">
-                {job.recording_sid}
-              </p>
-            </div>
-          )}
-
-          {/* Action Buttons */}
-          <div className="space-y-3">
-            {job.caller_phone !== 'web_user' && (
+        {/* Footer Actions */}
+        <div className="border-t border-gray-200 px-6 py-4 bg-gray-50">
+          {job.caller_phone !== 'web_user' ? (
+            <div className="space-y-3">
               <a 
                 href={`https://wa.me/${job.caller_phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 w-full bg-teal-600 hover:bg-teal-700 text-white py-3 px-4 rounded-xl font-medium transition-colors"
+                className="flex items-center justify-center gap-2 w-full bg-gray-900 hover:bg-gray-800 text-white py-2.5 px-4 rounded-md font-medium transition-colors text-sm"
               >
-                <MessageCircle className="w-5 h-5" />
+                <MessageCircle className="w-4 h-4" />
                 Contact via WhatsApp
               </a>
-            )}
-          </div>
-
-          {/* Tips */}
-          <div className="mt-6 p-4 bg-amber-50 border border-amber-200 rounded-xl">
-            <p className="text-sm text-amber-800">
-              <strong>Tip:</strong> {isWorker 
-                ? 'Discuss rates and availability before hiring.' 
-                : 'Meet in public places and agree on payment upfront.'}
+              
+              <a 
+                href={`tel:${job.caller_phone}`}
+                className="flex items-center justify-center gap-2 w-full bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 py-2.5 px-4 rounded-md font-medium transition-colors text-sm"
+              >
+                <Phone className="w-4 h-4" />
+                Call {formatPhoneNumber(job.caller_phone)}
+              </a>
+            </div>
+          ) : (
+            <p className="text-center text-sm text-gray-500">
+              Posted via web - no contact info available
             </p>
-          </div>
+          )}
+          
+          <p className="mt-4 text-xs text-gray-500 text-center">
+            Tip: Meet in public places and agree on payment upfront.
+          </p>
         </div>
       </div>
     </div>

@@ -2,10 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { VoiceJobsService } from '@/services'
 import type { VoiceJob } from '@/types'
-import { ArrowLeft, Briefcase, Shield, ChevronLeft, ChevronRight, Search } from 'lucide-react'
+import { ArrowLeft, Briefcase, Shield, ChevronLeft, ChevronRight, Search, RefreshCw } from 'lucide-react'
 import { Header } from '@/components'
 import JobDetailModal from '@/components/JobDetailModal'
 import { SimpleJobCard } from '@/components/cards/SimpleJobCard'
+import { processIncompleteJobs } from '@/utils/processIncompleteJobs'
 
 const ITEMS_PER_PAGE = 9
 
@@ -16,11 +17,31 @@ export default function FindWork() {
   const [selectedJob, setSelectedJob] = useState<VoiceJob | null>(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pendingCount, setPendingCount] = useState(0)
+  const [processing, setProcessing] = useState(false)
 
   useEffect(() => {
     fetchJobs()
     processTranscriptions()
   }, [])
+
+  const handleProcessIncomplete = async () => {
+    try {
+      setProcessing(true)
+      console.log('[PROCESSING] Starting incomplete job processing...')
+      const result = await processIncompleteJobs()
+      
+      if (result.processed > 0) {
+        console.log(`[PROCESSING] Successfully processed ${result.processed} incomplete jobs`)
+        await fetchJobs() // Refresh the job list
+      } else {
+        console.log('[PROCESSING] No incomplete jobs found to process')
+      }
+    } catch (error) {
+      console.error('[PROCESSING] Error processing incomplete jobs:', error)
+    } finally {
+      setProcessing(false)
+    }
+  }
 
   const fetchJobs = async () => {
     try {

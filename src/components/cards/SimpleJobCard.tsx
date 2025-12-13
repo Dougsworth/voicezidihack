@@ -55,25 +55,25 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="group bg-white border border-gray-100 rounded-xl p-5 hover:shadow-lg hover:border-gray-200 transition-all duration-200 cursor-pointer"
+      className="group bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
-          <div className={`p-2 rounded-lg ${
+          <div className={`p-2.5 rounded-md ${
             type === 'job_posting' 
-              ? 'bg-blue-50 text-blue-600' 
-              : 'bg-emerald-50 text-emerald-600'
+              ? 'bg-gray-100' 
+              : 'bg-gray-100'
           }`}>
             {type === 'job_posting' ? (
-              <Briefcase className="w-4 h-4" />
+              <Briefcase className="w-5 h-5 text-gray-600" />
             ) : (
-              <Wrench className="w-4 h-4" />
+              <Wrench className="w-5 h-5 text-gray-600" />
             )}
           </div>
           <div>
             <h3 className="font-semibold text-gray-900 text-sm">
-              {type === 'job_posting' ? '🔍 Job Posting' : '👷 Worker Available'}
+              {type === 'job_posting' ? 'Job Posting' : 'Worker Available'}
             </h3>
             <div className="flex items-center gap-2 mt-1">
               <Clock className="w-3 h-3 text-gray-400" />
@@ -84,8 +84,8 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
         
         <div className="flex items-center gap-2">
           {job.status === 'completed' && (
-            <Badge className="bg-green-50 text-green-700 border-green-200 text-xs px-2 py-0.5">
-              ✓ Transcribed
+            <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs px-2 py-0.5">
+              Transcribed
             </Badge>
           )}
           <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-gray-600 transition-colors" />
@@ -118,7 +118,7 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
           </span>
         </div>
         
-        <span className="text-xs text-teal-600 font-medium group-hover:text-teal-700 transition-colors">
+        <span className="text-xs text-gray-600 font-medium group-hover:text-gray-800 transition-colors">
           View details
         </span>
       </div>
