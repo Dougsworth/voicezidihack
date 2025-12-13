@@ -66,7 +66,7 @@ export class TranscriptionService {
           // Step 1: Apply Patois cleaning
           const patoisResult = PatoisCleaningService.cleanWithConfidence(transcription)
           if (patoisResult.isPatois) {
-            console.log('🇯🇲 Patois detected and cleaned:', patoisResult.cleaned)
+            console.log('[PATOIS] Detected and cleaned:', patoisResult.cleaned)
           }
           const cleanedResult = patoisResult.cleaned
           

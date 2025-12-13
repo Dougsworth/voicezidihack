@@ -5,6 +5,7 @@ export interface ExtractedJobDetails {
   skill: string | null
   timing: string | null
   description: string | null
+  jobType?: 'work_request' | 'job_posting' // Added for intelligent categorization
 }
 
 export class IntelligentExtractionService {
@@ -90,12 +91,31 @@ export class IntelligentExtractionService {
       }
     }
     
+    // Intelligent job type determination (fallback)
+    let jobType: 'work_request' | 'job_posting' = 'job_posting'
+    
+    // Strong indicators of work_request (offering services)
+    if (/\b(i am|i'm|me is|mi a)\s+(a|an)?\s*\w+\s*(available|looking for work)/i.test(transcription) ||
+        /\bavailable\s+(for|to)\s+work/i.test(transcription) ||
+        /\b(licensed|certified|experienced)\s+\w+\s+available/i.test(transcription) ||
+        /\bi need a job\b/i.test(transcription) ||
+        /\blooking for\s+(work|job|employment)/i.test(transcription)) {
+      jobType = 'work_request'
+    }
+    // Strong indicators of job_posting (hiring)
+    else if (/\bi need\s+(a|an|some)?\s*(promo|someone|somebody)\s+(to|for)/i.test(transcription) ||
+             /\blooking for\s+(a|an|some)?\s*(promo|someone|somebody)\s+(to|for)/i.test(transcription) ||
+             /\b(fix|repair|clean|paint)\s+(my|mi)\s+/i.test(transcription)) {
+      jobType = 'job_posting'
+    }
+    
     return {
       location,
       budget,
       skill,
       timing,
-      description: transcription
+      description: transcription,
+      jobType
     }
   }
 
@@ -122,23 +142,31 @@ export class IntelligentExtractionService {
           model: 'gpt-3.5-turbo',
           messages: [{
             role: 'user',
-            content: `Extract job details from this Jamaican voice transcription: "${transcription}"
+            content: `Extract job details from this Caribbean voice transcription: "${transcription}"
 
 IMPORTANT CARIBBEAN CONTEXT:
 - "promo" = "someone" (Jamaican term)
 - "I need a promo to fix..." = "I need someone to fix..."
 - Preserve authentic Caribbean job terms and locations
 
+CRITICAL: Determine the job type:
+- "work_request" = Someone OFFERING their services/looking for work (e.g., "I am an electrician available", "I need a job", "Licensed plumber looking for work")
+- "job_posting" = Someone HIRING/needs work done (e.g., "I need someone to fix my sink", "Looking for a painter", "Need help moving furniture")
+
 Return ONLY a JSON object with these exact fields:
 {
-  "location": "specific place in Jamaica mentioned (or null)",
+  "jobType": "work_request" OR "job_posting" (REQUIRED - choose one),
+  "location": "specific place mentioned (or null)",
   "budget": "money amount with currency (or null)", 
   "skill": "type of work/service (or null)",
   "timing": "when work should be done (or null)",
   "description": "clean summary preserving Caribbean terms"
 }
 
-Be conservative - only extract if clearly stated. Use null for unclear items.`
+Examples:
+- "Electrical work licensed electrician available Monday to Friday" → jobType: "work_request"
+- "I need a carpenter to fix my door" → jobType: "job_posting"
+- "I need a job as a plumber" → jobType: "work_request"`
           }],
           temperature: 0.1,
           max_tokens: 200
@@ -158,7 +186,8 @@ Be conservative - only extract if clearly stated. Use null for unclear items.`
         budget: parsed.budget,
         skill: parsed.skill,
         timing: parsed.timing,
-        description: parsed.description || transcription
+        description: parsed.description || transcription,
+        jobType: parsed.jobType || 'job_posting' // Default to job_posting if not specified
       }
     } catch (error) {
       console.error('GPT extraction failed:', error)

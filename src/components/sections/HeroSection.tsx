@@ -66,9 +66,9 @@ const HeroSection = () => {
         const location = await GeolocationService.getCaribbeanLocation()
         setUserLocation(location)
         localStorage.setItem('userLocation', JSON.stringify(location))
-        console.log('📍 Auto-detected location:', location.detectedIsland || location.nearestTown)
+        console.log('[LOCATION] Auto-detected:', location.detectedIsland || location.nearestTown)
       } catch (error) {
-        console.log('📍 Location not available')
+        console.log('[LOCATION] Not available')
       }
     }
     
@@ -78,7 +78,7 @@ const HeroSection = () => {
     if (savedPhone) {
       setUserPhone(savedPhone)
       setUserPhoneDisplay(savedPhoneDisplay)
-      console.log('📱 Using saved phone:', savedPhone)
+      console.log('[PHONE] Using saved number:', savedPhone)
     }
     
     fetchStats()
@@ -96,7 +96,7 @@ const HeroSection = () => {
       
       // Transcribe using HuggingFace ASR
       const text = await TranscriptionService.transcribeAudio(audioBlob)
-      console.log('✅ Transcription:', text)
+      console.log('[TRANSCRIPTION] Success:', text)
       
       // Check if transcription is too short or unclear
       if (text.trim().length < 3) {
@@ -106,73 +106,18 @@ const HeroSection = () => {
       setTranscription(text)
       setProcessingStage('analyzing')
       
-      // Enhanced Caribbean-aware job categorization (matching Twilio logic)
-      const lower = text.toLowerCase();
-      let seekingScore = 0;
-      let hiringScore = 0;
-      const indicators: string[] = [];
-
-      // WORK SEEKING patterns (work_request)
-      if (/\b(i|me|mi)\s+(am\s+)?(need|want|looking\s+for)\s+(work|job|employment)/i.test(lower)) {
-        seekingScore += 3;
-        indicators.push('Seeking work directly');
-      }
-      
-      if (/\b(i|me|mi)\s+(am\s+)?(a|an)\s+\w+/i.test(lower)) {
-        seekingScore += 2;
-        indicators.push('Job role declaration');
-      }
-      
-      if (/\bavailable\s+(for\s+)?(work|job)/i.test(lower)) {
-        seekingScore += 3;
-        indicators.push('Availability for work');
-      }
-      
-      if (/\b(i|me|mi)\s+(can|do|know\s+how\s+to)\s+\w+/i.test(lower)) {
-        seekingScore += 2;
-        indicators.push('Skill offering');
-      }
-
-      // HIRING patterns (job_posting) - Caribbean aware
-      if (/\b(i|me|mi)\s+(need|want)\s+(a|an|some)?\s*(promo|someone|somebody)\s+(to|for|who\s+can)/i.test(lower)) {
-        hiringScore += 4;
-        indicators.push('Need someone for task (promo=someone)');
-      }
-      
-      if (/\bneed\s+(a|an|some|someone|somebody|promo)\s+(to|for|who\s+can)/i.test(lower)) {
-        hiringScore += 3;
-        indicators.push('Hiring need expressed');
-      }
-      
-      if (/\blooking\s+for\s+(a|an|some|someone|somebody|promo)\s+(to|for|who\s+can)/i.test(lower)) {
-        hiringScore += 3;
-        indicators.push('Looking to hire');
-      }
-
-      // Possessive patterns indicate hiring
-      if (/\b(fix|paint|clean|repair|wash|cut|trim)\s+(my|mi|our)\s+\w+/i.test(lower)) {
-        hiringScore += 3;
-        indicators.push('Personal task needing worker');
-      }
-
-      // Rate/pricing patterns indicate work seeking
-      if (/\b(my|mi)\s+(rate|charge|price|fee)/i.test(lower)) {
-        seekingScore += 2;
-        indicators.push('Worker pricing mention');
-      }
-
-      const gigType = seekingScore > hiringScore ? 'work_request' : 'job_posting'
-      console.log(`🎯 Enhanced Categorization: seeking=${seekingScore}, hiring=${hiringScore} → ${gigType}`)
-      console.log(`   Indicators: ${indicators.join(', ')}`)
-      
-      // Extract job details with GPT
-      console.log('🤖 Extracting job details with GPT...')
+      // Extract job details with GPT (including intelligent categorization)
+      console.log('[AI] Extracting job details and categorizing with GPT...')
       const extractedDetails = await VoiceJobsService.extractJobDetailsWithGPT(text)
-      console.log('✅ Extracted details:', extractedDetails)
+      
+      // Use GPT's intelligent categorization
+      const gigType = extractedDetails.jobType || 'job_posting'
+      console.log(`[AI CATEGORIZATION] GPT determined type: ${gigType}`)
+      console.log('[AI] Extracted details:', extractedDetails)
       
       // Save to voice_jobs table with FULL AI enhancement
       const result = await VoiceJobsService.createFromFrontendWithFullAI(text, gigType, userPhone || undefined, true)
-      console.log('✅ Created AI-enhanced voice job:', {
+      console.log('[SUCCESS] Created AI-enhanced voice job:', {
         success: !!result.voiceJob,
         skillsFound: result.skillProfile?.primarySkills?.length || 0,
         matchesFound: result.matches?.length || 0
@@ -187,15 +132,15 @@ const HeroSection = () => {
       
       // Log skill insights for user feedback
       if (result.skillProfile?.primarySkills && result.skillProfile.primarySkills.length > 0) {
-        console.log('🔧 Skills detected:', result.skillProfile.primarySkills.map(s => s.name).join(', '))
+        console.log('[SKILLS] Detected:', result.skillProfile.primarySkills.map(s => s.name).join(', '))
         if (result.skillProfile.marketValue === 'high' || result.skillProfile.marketValue === 'premium') {
-          console.log('💰 High-value skill combination detected!')
+          console.log('[SKILLS] High-value skill combination detected!')
         }
       }
       
       // Log potential matches
       if (result.matches && result.matches.length > 0) {
-        console.log(`🎯 ${result.matches.length} potential matches found with scores:`, 
+        console.log(`[MATCHES] ${result.matches.length} potential matches found with scores:`, 
           result.matches.slice(0, 3).map(m => `${(m.matchScore * 100).toFixed(0)}%`).join(', ')
         )
       }
@@ -475,6 +420,9 @@ const HeroSection = () => {
                 />
                 <p className="text-sm text-gray-500 mt-4 text-center">
                   Record → Transcribe → Post automatically
+                </p>
+                <p className="text-xs text-gray-400 mt-2 text-center">
+                  Please wait a moment after recording - transcription may take a few seconds
                 </p>
               </>
             )}

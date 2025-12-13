@@ -9,7 +9,7 @@ import IntelligentMatchingService, { type JobMatch, type MatchingProfile } from 
 
 export class VoiceJobsService {
   static async getVoiceJobs(filters?: { gigType?: 'job_posting' | 'work_request' }): Promise<VoiceJob[]> {
-    console.log('🔍 DEBUG: Fetching from voice_jobs table...', filters)
+    console.log('[DEBUG] Fetching from voice_jobs table...', filters)
     
     let query = supabase
       .from('voice_jobs')
@@ -27,8 +27,8 @@ export class VoiceJobsService {
       return []
     }
 
-    console.log('✅ SUCCESS: Fetched', data?.length || 0, 'voice jobs')
-    console.log('📊 RAW DATA:', data)
+    console.log('[SUCCESS] Fetched', data?.length || 0, 'voice jobs')
+    console.log('[RAW DATA]:', data)
     
     return data as VoiceJob[]
   }
@@ -160,7 +160,7 @@ export class VoiceJobsService {
       return null
     }
 
-    console.log('✅ Frontend voice job created:', data)
+    console.log('[SUCCESS] Frontend voice job created:', data)
     return data as VoiceJob
   }
 
@@ -221,7 +221,7 @@ export class VoiceJobsService {
       return null
     }
 
-    console.log('✅ Updated existing record:', data)
+    console.log('[SUCCESS] Updated existing record:', data)
     return data as VoiceJob
   }
 
@@ -241,7 +241,7 @@ export class VoiceJobsService {
     const result = await this.createVoiceJob(sampleJob)
     
     if (result) {
-      console.log('✅ Sample data created:', result)
+      console.log('[SUCCESS] Sample data created:', result)
     } else {
       console.error('❌ Failed to create sample data')
     }
@@ -255,11 +255,11 @@ export class VoiceJobsService {
     failed: number
     results: Array<{ id: string; status: 'success' | 'error'; transcription?: string; error?: string }>
   }> {
-    console.log('🔄 Processing pending transcriptions...')
+    console.log('[PROCESSING] Pending transcriptions...')
     
     // Get all jobs with status 'processing'
     const pendingJobs = await this.getVoiceJobsByStatus('processing')
-    console.log(`📋 Found ${pendingJobs.length} pending jobs`)
+    console.log(`[FOUND] ${pendingJobs.length} pending jobs`)
     
     const results: Array<{ id: string; status: 'success' | 'error'; transcription?: string; error?: string }> = []
     let processed = 0
@@ -292,7 +292,7 @@ export class VoiceJobsService {
         const updated = await this.updateVoiceJobTranscription(job.id, transcription, 'completed')
         
         if (updated) {
-          console.log(`✅ Job ${job.id} transcribed:`, transcription.substring(0, 50) + '...')
+          console.log(`[SUCCESS] Job ${job.id} transcribed:`, transcription.substring(0, 50) + '...')
           results.push({ id: job.id, status: 'success', transcription })
           processed++
         } else {
@@ -320,7 +320,7 @@ export class VoiceJobsService {
       }
     }
     
-    console.log(`✅ Processed: ${processed}, Failed: ${failed}`)
+    console.log(`[COMPLETED] Processed: ${processed}, Failed: ${failed}`)
     return { processed, failed, results }
   }
 
@@ -378,7 +378,7 @@ export class VoiceJobsService {
       // Categorize the transcription
       const categorization = JobCategorizationService.categorize(job.transcription)
       
-      console.log(`📊 Categorized job ${jobId}:`, categorization)
+      console.log(`[CATEGORIZED] Job ${jobId}:`, categorization)
       
       // Map our categories to existing gig_type values
       const gigType = categorization.category === 'find_work' ? 'work_request' : 'job_posting'
@@ -397,7 +397,7 @@ export class VoiceJobsService {
         throw updateError
       }
       
-      console.log(`✅ Updated job ${jobId} category to: ${gigType}`)
+      console.log(`[UPDATED] Job ${jobId} category to: ${gigType}`)
       
     } catch (error) {
       console.error('Error categorizing voice job:', error)
@@ -427,7 +427,7 @@ export class VoiceJobsService {
         return
       }
       
-      console.log(`📊 Categorizing ${jobs.length} jobs...`)
+      console.log(`[CATEGORIZING] ${jobs.length} jobs...`)
       
       // Process each job
       for (const job of jobs) {
@@ -436,7 +436,7 @@ export class VoiceJobsService {
         await new Promise(resolve => setTimeout(resolve, 100))
       }
       
-      console.log(`✅ Completed categorizing ${jobs.length} jobs`)
+      console.log(`[COMPLETED] Categorizing ${jobs.length} jobs`)
       
     } catch (error) {
       console.error('Error in batch categorization:', error)
@@ -488,7 +488,7 @@ export class VoiceJobsService {
         throw error
       }
 
-      console.log('✅ Voice job created with extracted details:', data)
+      console.log('[SUCCESS] Voice job created with extracted details:', data)
       return data as VoiceJob
 
     } catch (error) {
@@ -512,7 +512,7 @@ export class VoiceJobsService {
       const skillService = SkillTaxonomyService.getInstance();
       const skillProfile = await skillService.extractSkills(voiceJob.transcription, true);
       
-      console.log('✅ Extracted skill profile:', skillProfile);
+      console.log('[SKILLS] Extracted skill profile:', skillProfile);
       return skillProfile;
     } catch (error) {
       console.error('❌ Error extracting skills:', error);
@@ -535,11 +535,11 @@ export class VoiceJobsService {
       
       // Create matching profile
       const profile = await matchingService.createMatchingProfile(voiceJob);
-      console.log('✅ Created matching profile:', profile.id);
+      console.log('[MATCHING] Created profile:', profile.id);
       
       // Find matches
       const matches = await matchingService.findMatches(profile, maxResults);
-      console.log(`✅ Found ${matches.length} intelligent matches`);
+      console.log(`[MATCHES] Found ${matches.length} intelligent matches`);
       
       return matches;
     } catch (error) {
@@ -589,14 +589,14 @@ export class VoiceJobsService {
         
         // Log potential matches for the user
         if (result.matches.length > 0) {
-          console.log(`🎯 Found ${result.matches.length} potential matches:`);
+          console.log(`[MATCHES] Found ${result.matches.length} potential matches:`);
           result.matches.slice(0, 3).forEach((match, i) => {
             console.log(`${i + 1}. Score: ${(match.matchScore * 100).toFixed(1)}% - ${match.matchReasons.join(', ')}`);
           });
         }
       }
 
-      console.log('✅ Created comprehensive AI-enhanced job:', {
+      console.log('[SUCCESS] Created comprehensive AI-enhanced job:', {
         id: voiceJob.id,
         type: gigType,
         skills: result.skillProfile?.primarySkills?.length || 0,
