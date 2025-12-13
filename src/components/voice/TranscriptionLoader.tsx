@@ -71,7 +71,7 @@ export default function TranscriptionLoader({
       case 'analyzing':
         return {
           icon: <Brain className="w-5 h-5 animate-pulse" />,
-          text: 'AI analyzing and extracting details...',
+          text: 'Analyzing and extracting details...',
           color: 'text-green-600',
           bgColor: 'bg-green-50'
         }

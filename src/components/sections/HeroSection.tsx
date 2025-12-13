@@ -1,6 +1,7 @@
 import { ArrowRight, Phone } from "lucide-react";
 import VoiceRecorder from "@/components/voice/VoiceRecorder";
 import TranscriptionLoader from "@/components/voice/TranscriptionLoader";
+import VoiceQualityIndicator from "@/components/voice/VoiceQualityIndicator";
 import { 
   AnimatedMicrophone,
   AnimatedPhone, 
@@ -26,6 +27,10 @@ const HeroSection = () => {
     matches?: any[];
     extractedDetails?: any;
   } | null>(null)
+  const [recordedAudio, setRecordedAudio] = useState<Blob | null>(null)
+  const [recordingDuration, setRecordingDuration] = useState<number>(0)
+  const [isRecording, setIsRecording] = useState(false)
+  const [currentRecordingTime, setCurrentRecordingTime] = useState(0)
   const [userLocation, setUserLocation] = useState<CaribbeanLocation | null>(null)
   const [userPhone, setUserPhone] = useState<string | null>(null)
   const [userPhoneDisplay, setUserPhoneDisplay] = useState<string | null>(null)
@@ -85,11 +90,18 @@ const HeroSection = () => {
     autoGetLocation()
   }, [])
 
-  const handleRecordingComplete = async (audioBlob: Blob) => {
+  const handleRecordingStateChange = (recording: boolean, duration: number) => {
+    setIsRecording(recording)
+    setCurrentRecordingTime(duration)
+  }
+
+  const handleRecordingComplete = async (audioBlob: Blob, duration?: number) => {
     setIsProcessing(true)
     setProcessingStage('uploading')
     setProcessingError(null)
     setAiResults(null) // Clear previous AI results
+    setRecordedAudio(audioBlob)
+    setRecordingDuration(duration || 0)
     
     try {
       setProcessingStage('transcribing')
@@ -106,18 +118,18 @@ const HeroSection = () => {
       setTranscription(text)
       setProcessingStage('analyzing')
       
-      // Extract job details with GPT (including intelligent categorization)
-      console.log('[AI] Extracting job details and categorizing with GPT...')
+      // Extract job details with intelligent categorization
+      console.log('[ANALYSIS] Extracting job details and categorizing...')
       const extractedDetails = await VoiceJobsService.extractJobDetailsWithGPT(text)
       
-      // Use GPT's intelligent categorization
+      // Use intelligent categorization
       const gigType = extractedDetails.jobType || 'job_posting'
-      console.log(`[AI CATEGORIZATION] GPT determined type: ${gigType}`)
-      console.log('[AI] Extracted details:', extractedDetails)
+      console.log(`[CATEGORIZATION] Determined type: ${gigType}`)
+      console.log('[ANALYSIS] Extracted details:', extractedDetails)
       
-      // Save to voice_jobs table with FULL AI enhancement
+      // Save to voice_jobs table with full enhancement
       const result = await VoiceJobsService.createFromFrontendWithFullAI(text, gigType, userPhone || undefined, true)
-      console.log('[SUCCESS] Created AI-enhanced voice job:', {
+      console.log('[SUCCESS] Created enhanced voice job:', {
         success: !!result.voiceJob,
         skillsFound: result.skillProfile?.primarySkills?.length || 0,
         matchesFound: result.matches?.length || 0
@@ -258,6 +270,18 @@ const HeroSection = () => {
                   </div>
                 )}
 
+                {/* Voice Quality and Accent Analysis */}
+                {transcription && (
+                  <div className="mb-4">
+                    <VoiceQualityIndicator 
+                      audioBlob={recordedAudio}
+                      transcription={transcription}
+                      duration={recordingDuration}
+                      showFeedback={true}
+                    />
+                  </div>
+                )}
+
                 {/* AI Skills Detection Display */}
                 {aiResults?.skillProfile?.primarySkills && aiResults.skillProfile.primarySkills.length > 0 && (
                   <div className="bg-white rounded-lg p-4 mb-4 text-left border-2" style={{ borderColor: CARIBBEAN_COLORS.primary[200], backgroundColor: CARIBBEAN_COLORS.primary[25] }}>
@@ -268,7 +292,7 @@ const HeroSection = () => {
                         </svg>
                       </div>
                       <h4 className="text-sm font-semibold" style={{ color: CARIBBEAN_COLORS.primary[800] }}>
-                        🔧 AI Detected Skills
+                        🔧 Detected Skills
                       </h4>
                       {aiResults.skillProfile.marketValue === 'premium' && (
                         <span className="px-2 py-1 rounded-full text-xs font-medium" style={{ 
@@ -417,7 +441,18 @@ const HeroSection = () => {
                 <VoiceRecorder 
                   onRecordingComplete={handleRecordingComplete}
                   isProcessing={isProcessing}
+                  onRecordingStateChange={handleRecordingStateChange}
                 />
+                
+                {/* Real-time Recording Feedback */}
+                {isRecording && (
+                  <div className="mt-4">
+                    <VoiceQualityIndicator 
+                      isRecording={true}
+                      showFeedback={true}
+                    />
+                  </div>
+                )}
                 <p className="text-sm text-gray-500 mt-4 text-center">
                   Record → Transcribe → Post automatically
                 </p>

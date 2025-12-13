@@ -3,11 +3,12 @@ import { Mic, Square, Play, Pause, Upload } from 'lucide-react'
 import { Button } from '../ui/button'
 
 interface VoiceRecorderProps {
-  onRecordingComplete: (audioBlob: Blob) => void
+  onRecordingComplete: (audioBlob: Blob, duration?: number) => void
   isProcessing?: boolean
+  onRecordingStateChange?: (isRecording: boolean, duration: number) => void
 }
 
-export default function VoiceRecorder({ onRecordingComplete, isProcessing = false }: VoiceRecorderProps) {
+export default function VoiceRecorder({ onRecordingComplete, isProcessing = false, onRecordingStateChange }: VoiceRecorderProps) {
   const [isRecording, setIsRecording] = useState(false)
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
@@ -45,9 +46,17 @@ export default function VoiceRecorder({ onRecordingComplete, isProcessing = fals
       setIsRecording(true)
       setRecordingTime(0)
       
+      // Notify parent after state update
+      setTimeout(() => onRecordingStateChange?.(true, 0), 0)
+      
       // Start timer
       timerRef.current = setInterval(() => {
-        setRecordingTime(prev => prev + 1)
+        setRecordingTime(prev => {
+          const newTime = prev + 1
+          // Use setTimeout to avoid calling setState during render
+          setTimeout(() => onRecordingStateChange?.(true, newTime), 0)
+          return newTime
+        })
       }, 1000)
       
     } catch (error) {
@@ -60,6 +69,9 @@ export default function VoiceRecorder({ onRecordingComplete, isProcessing = fals
     if (mediaRecorder.current && isRecording) {
       mediaRecorder.current.stop()
       setIsRecording(false)
+      
+      // Notify parent after state update
+      setTimeout(() => onRecordingStateChange?.(false, recordingTime), 0)
       
       if (timerRef.current) {
         clearInterval(timerRef.current)
@@ -92,7 +104,7 @@ export default function VoiceRecorder({ onRecordingComplete, isProcessing = fals
 
   const submitRecording = () => {
     if (audioBlob) {
-      onRecordingComplete(audioBlob)
+      onRecordingComplete(audioBlob, recordingTime)
       setAudioBlob(null)
       setRecordingTime(0)
     }
