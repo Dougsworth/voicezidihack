@@ -14,6 +14,7 @@ export class VoiceJobsService {
     let query = supabase
       .from('voice_jobs')
       .select('*')
+      .not('transcription', 'is', null)
       .order('created_at', { ascending: false })
 
     if (filters?.gigType) {
@@ -387,9 +388,7 @@ export class VoiceJobsService {
       const { error: updateError } = await supabase
         .from('voice_jobs')
         .update({
-          gig_type: gigType,
-          category_confidence: categorization.confidence,
-          category_indicators: categorization.indicators
+          gig_type: gigType
         })
         .eq('id', jobId)
       

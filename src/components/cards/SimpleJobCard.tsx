@@ -55,20 +55,20 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
   return (
     <div 
       onClick={onClick}
-      className="group bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer"
+      className="group bg-white border border-gray-200 rounded-lg p-5 hover:shadow-md hover:border-teal-200 transition-all duration-200 cursor-pointer"
     >
       {/* Header */}
       <div className="flex items-start justify-between mb-4">
         <div className="flex items-center gap-3">
           <div className={`p-2.5 rounded-md ${
             type === 'job_posting' 
-              ? 'bg-gray-100' 
-              : 'bg-gray-100'
+              ? 'bg-teal-50' 
+              : 'bg-blue-50'
           }`}>
             {type === 'job_posting' ? (
-              <Briefcase className="w-5 h-5 text-gray-600" />
+              <Briefcase className="w-5 h-5 text-teal-600" />
             ) : (
-              <Wrench className="w-5 h-5 text-gray-600" />
+              <Wrench className="w-5 h-5 text-blue-600" />
             )}
           </div>
           <div>
@@ -84,7 +84,7 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
         
         <div className="flex items-center gap-2">
           {job.status === 'completed' && (
-            <Badge className="bg-gray-100 text-gray-600 border-gray-200 text-xs px-2 py-0.5">
+            <Badge className="bg-teal-50 text-teal-700 border-teal-200 text-xs px-2 py-0.5">
               Transcribed
             </Badge>
           )}
@@ -93,7 +93,7 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
       </div>
 
       {/* Transcription */}
-      {job.transcription ? (
+      {job.transcription && job.transcription.length > 5 ? (
         <div className="mb-4">
           <div className="flex items-start gap-2">
             <Volume2 className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
@@ -105,7 +105,9 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
       ) : (
         <div className="mb-4 flex items-center gap-2">
           <VolumeX className="w-4 h-4 text-gray-300" />
-          <span className="text-gray-400 text-sm italic">Processing transcription...</span>
+          <span className="text-gray-400 text-sm italic">
+            {job.transcription ? 'Transcription incomplete...' : 'Processing transcription...'}
+          </span>
         </div>
       )}
 
@@ -118,7 +120,7 @@ export function SimpleJobCard({ job, onClick, type }: SimpleJobCardProps) {
           </span>
         </div>
         
-        <span className="text-xs text-gray-600 font-medium group-hover:text-gray-800 transition-colors">
+        <span className="text-xs text-teal-600 font-medium group-hover:text-teal-700 transition-colors">
           View details
         </span>
       </div>

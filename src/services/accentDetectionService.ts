@@ -118,13 +118,19 @@ export class AccentDetectionService {
             content: `Analyze this Caribbean voice transcription for dialect and accent markers: "${transcription}"
 
 EXPERT CARIBBEAN LINGUISTIC ANALYSIS:
-You are a Caribbean linguistics expert. Analyze the speech patterns, vocabulary, and grammatical structures to identify the specific Caribbean dialect and island origin.
+You are a Caribbean linguistics expert. Distinguish between ACCENT (pronunciation/intonation patterns) and PATOIS/CREOLE (actual vocabulary/grammar usage).
+
+IMPORTANT: Someone can have a Caribbean ACCENT but speak Standard English with no Patois. Only mark patois as present if actual Caribbean vocabulary/grammar is used.
 
 CARIBBEAN DIALECTS TO IDENTIFY:
 - JAMAICAN PATOIS: "mi" (me/I), "dem" (them), "yuh" (you), "seh" (say), "weh" (where), "waan" (want), "mek" (make), "fi" (for/to), "inna" (in), "promo" (someone), "badda" (bother), "yaad" (yard/home)
 - TRINIDADIAN: "ah go" (I will), "rel" (really), "gyul" (girl), "man/boy" (emphasis), "lime" (hang out), "fete" (party), "mamaguy" (fool around), "tabanca" (heartbreak)
 - BARBADIAN (BAJAN): "wunna" (you all), "pun" (on), "wid" (with), "uh" (you), "de" (the), "gine" (going to), "bout here" (around here)
 - GUYANESE: "me gun" (I will), "small boy/girl" (young person), "backra" (white person), "me deh" (I am), "pickney" (child)
+
+ACCENT vs PATOIS:
+- ACCENT: Pronunciation, rhythm, intonation (can be Caribbean without using Creole words)
+- PATOIS: Actual Caribbean vocabulary and grammar structures
 
 ANALYZE FOR:
 1. Vocabulary markers (specific words/terms)
@@ -326,9 +332,9 @@ RETURN ONLY JSON:
       case 'moderate':
         return 'Moderate Patois usage - Mixed Caribbean expressions'
       case 'light':
-        return 'Light Patois usage - Few Caribbean terms'
+        return 'Light Caribbean influence detected'
       default:
-        return 'Standard English - No Patois detected'
+        return 'Standard English with no discernible Caribbean dialect markers'
     }
   }
 }
